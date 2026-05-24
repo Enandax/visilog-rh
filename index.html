@@ -642,6 +642,16 @@ const Planning = ({
     };
     setPlanning(next);
     await save(KEYS.planning, next);
+    // Sync API
+    if (user?.token) {
+      await api("planning.setCell", {
+        agentId,
+        date: dateKey,
+        shift: data.shift || "",
+        role: data.role || "",
+        note: data.note || ""
+      }, user.token);
+    }
   };
   const activeNavires = navires.filter(n => {
     const start = new Date(n.arrivee),
@@ -1005,6 +1015,18 @@ const Navires = ({
     setNavires(next);
     await save(KEYS.navires, next);
   };
+  const apiSaveNavire = async (navire, isNew) => {
+    const token = user?.token;
+    if (token) {
+      if (isNew) await api("navires.create", navire, token);else await api("navires.update", navire, token);
+    }
+  };
+  const apiDeleteNavire = async id => {
+    const token = user?.token;
+    if (token) await api("navires.delete", {
+      id
+    }, token);
+  };
   const chargeNavire = n => {
     const spj = shiftsParJour(n.modeShift);
     const hps = heuresParShift(n.modeShift);
@@ -1261,7 +1283,10 @@ const Navires = ({
     }, "Modifier"), /*#__PURE__*/React.createElement(Btn, {
       danger: true,
       small: true,
-      onClick: () => saveNavires(navires.filter(x => x.id !== n.id))
+      onClick: async () => {
+        saveNavires(navires.filter(x => x.id !== n.id));
+        await apiDeleteNavire(n.id);
+      }
     }, "Suppr."))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "grid",
@@ -1309,15 +1334,18 @@ const Navires = ({
   }), form !== null && /*#__PURE__*/React.createElement(NavireForm, {
     initial: form.id ? form : null,
     onClose: () => setForm(null),
-    onSave: f => {
-      const next = form.id ? navires.map(n => n.id === form.id ? {
-        ...n,
-        ...f
-      } : n) : [...navires, {
+    onSave: async f => {
+      const isNew = !form.id;
+      const navireData = isNew ? {
         ...f,
         id: `n${Date.now()}`
-      }];
+      } : {
+        ...form,
+        ...f
+      };
+      const next = isNew ? [...navires, navireData] : navires.map(n => n.id === form.id ? navireData : n);
       saveNavires(next);
+      await apiSaveNavire(navireData, isNew);
       setForm(null);
     }
   }));
@@ -1333,6 +1361,12 @@ const Agents = ({
   const saveAgents = async next => {
     setAgents(next);
     await save(KEYS.agents, next);
+  };
+  const apiSaveAgent = async (agent, isNew) => {
+    const token = user?.token;
+    if (token) {
+      if (isNew) await api("agents.create", agent, token);else await api("agents.update", agent, token);
+    }
   };
   const AgentForm = ({
     initial,
@@ -1678,15 +1712,18 @@ const Agents = ({
   }, "Salaire")))))), form !== null && /*#__PURE__*/React.createElement(AgentForm, {
     initial: form.id ? form : null,
     onClose: () => setForm(null),
-    onSave: f => {
-      const next = form.id ? agents.map(a => a.id === form.id ? {
-        ...a,
-        ...f
-      } : a) : [...agents, {
+    onSave: async f => {
+      const isNew = !form.id;
+      const agentData = isNew ? {
         ...f,
         id: `a${Date.now()}`
-      }];
+      } : {
+        ...form,
+        ...f
+      };
+      const next = isNew ? [...agents, agentData] : agents.map(a => a.id === form.id ? agentData : a);
       saveAgents(next);
+      await apiSaveAgent(agentData, isNew);
       setForm(null);
     }
   }));
@@ -1715,13 +1752,15 @@ const Conges = ({
   };
   const submitDemande = async () => {
     if (!f.agentId || !f.dateDebut || !f.dateFin) return;
-    const next = [...conges, {
+    const newConge = {
       ...f,
       id: `c${Date.now()}`,
       statut: "EN ATTENTE",
       dateDemande: new Date().toISOString().slice(0, 10)
-    }];
+    };
+    const next = [...conges, newConge];
     await saveConges(next);
+    if (user?.token) await api("conges.create", f, user.token);
     setForm(false);
     setF({
       agentId: "",
@@ -1734,7 +1773,7 @@ const Conges = ({
   const valider = async id => {
     const dem = conges.find(c => c.id === id);
     if (!dem) return;
-    // Appliquer dans le planning
+    // Appliquer dans le planning local
     const d1 = new Date(dem.dateDebut),
       d2 = new Date(dem.dateFin);
     const newPlanning = {
@@ -1755,6 +1794,11 @@ const Conges = ({
       statut: "VALIDÉ"
     } : c);
     await saveConges(next);
+    // Sync API
+    if (user?.token) await api("conges.valider", {
+      id,
+      validePar: user.username
+    }, user.token);
   };
   const refuser = async id => {
     const next = conges.map(c => c.id === id ? {
@@ -1762,6 +1806,10 @@ const Conges = ({
       statut: "REFUSÉ"
     } : c);
     await saveConges(next);
+    if (user?.token) await api("conges.refuser", {
+      id,
+      validePar: user.username
+    }, user.token);
   };
   const agentName = id => {
     const a = agents.find(x => x.id === id);
@@ -2674,8 +2722,6 @@ function App() {
 }
 ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(App, null));
 
-
-    // Mount React app
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(React.createElement(App));
   </script>
