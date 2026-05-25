@@ -1959,6 +1959,10 @@ const Navires = ({
         marginTop: 2
       }
     }, k.label)))));
+  }), affectModal && /*#__PURE__*/React.createElement(AffectNavireModal, {
+    navire: affectModal,
+    onClose: () => setAffectModal(null),
+    onBulkSetPlanning: onBulkSetPlanning
   }), form !== null && /*#__PURE__*/React.createElement(NavireForm, {
     initial: form.id ? form : null,
     onClose: () => setForm(null),
