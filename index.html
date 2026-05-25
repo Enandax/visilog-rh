@@ -925,7 +925,9 @@ const Planning = ({
   user,
   configShifts,
   configColors,
-  setCell
+  setCell,
+  navireAffectation,
+  onClearNavireAffectation
 }) => {
   const [weekOffset, setWeekOffset] = useState(0);
   const [modal, setModal] = useState(null); // {agentId, dateKey}
@@ -956,210 +958,57 @@ const Planning = ({
   });
   const filtered = agents.filter(a => (a.actif === true || a.actif === "TRUE" || a.actif === "true") && (!filterProjet || a.projet === filterProjet));
 
-  // Composant modal d'affectation navire
-  const AffectNavireModal = ({
-    navire,
-    onClose,
-    onBulkSetPlanning = async () => {}
-  }) => {
-    const [selected, setSelected] = useState({}); // {agentId: poste}
-    const [saving, setSaving] = useState(false);
-
-    // Dates du navire
-    const datesList = [];
-    try {
-      for (let d = new Date(navire.arrivee); datesList.length < (navire.dureeJours || 1) && datesList.length < 30; d.setDate(d.getDate() + 1)) {
-        datesList.push(fmtDateKey(new Date(d)));
-      }
-    } catch (e) {
-      console.error("Erreur dates navire:", e);
-    }
-
-    // Agents qualifiés = qui ont au moins un des postes requis du navire
-    const qualifies = agents.filter(a => {
-      if (!a.actif) return false;
-      const agentRoles = a.roles || [];
-      return navire.postes.some(p => agentRoles.includes(p));
-    });
-
-    // Agents déjà occupés sur les dates du navire
-    const agentOccupe = agentId => {
-      return datesList.some(dk => {
-        const cell = planning[agentId + "_" + dk];
-        return cell && cell.shift && !["REPOS", "CONGE"].includes(cell.shift);
-      });
-    };
-    const toggleAgent = (agentId, poste) => {
-      setSelected(prev => {
-        const next = {
-          ...prev
-        };
-        if (next[agentId]) delete next[agentId];else next[agentId] = poste;
-        return next;
-      });
-    };
-    const handleSave = async () => {
-      setSaving(true);
-      const cells = [];
-      Object.entries(selected).forEach(([agentId, poste]) => {
-        datesList.forEach(dk => {
-          cells.push({
-            agentId,
-            date: dk,
-            shift: "MISSION",
-            role: poste,
-            note: "Navire: " + navire.nom
-          });
-        });
-      });
-      if (cells.length > 0) {
-        // Update local
-        const newPlan = {
-          ...planning
-        };
-        cells.forEach(c => {
-          const existing = planning[c.agentId + "_" + c.date] || {};
-          newPlan[c.agentId + "_" + c.date] = {
-            ...existing,
-            ...c,
-            shiftInitial: c.shift
-          };
-        });
-        setPlanning(newPlan);
-        await save(KEYS.planning, newPlan);
-        if (user?.token) await api("planning.bulkSet", {
-          cells
-        }, user.token);
-      }
-      setSaving(false);
-      onClose();
-    };
-    return /*#__PURE__*/React.createElement(Modal, {
-      title: "Affecter l'équipe — " + navire.nom,
-      onClose: onClose,
-      wide: true
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        flexDirection: "column",
-        gap: 12
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        color: "#64748B"
-      }
-    }, "P\xE9riode : ", navire.arrivee, " \xB7 ", navire.dureeJours, "j \xB7 Mode ", navire.modeShift, "/shift"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        fontWeight: 600,
-        color: "#1D2C41"
-      }
-    }, "Postes requis : ", navire.postes.join(", ")), /*#__PURE__*/React.createElement("div", {
-      style: {
-        borderTop: "1px solid #E2E8F0",
-        paddingTop: 12
-      }
-    }, qualifies.length === 0 && /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: "#EF4444",
-        fontSize: 13
-      }
-    }, "Aucun agent qualifi\xE9 trouv\xE9 pour ces postes."), qualifies.map(a => {
-      const occupe = agentOccupe(a.id);
-      const sel = !!selected[a.id];
-      const matchRoles = (a.roles || []).filter(r => navire.postes.includes(r));
-      return /*#__PURE__*/React.createElement("div", {
-        key: a.id,
-        onClick: () => !occupe && toggleAgent(a.id, matchRoles[0] || ""),
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "8px 12px",
-          borderRadius: 8,
-          marginBottom: 6,
-          cursor: occupe ? "not-allowed" : "pointer",
-          background: sel ? "#FEF3C7" : occupe ? "#F8FAFC" : "#F1F5F9",
-          border: "2px solid " + (sel ? "#D5A563" : occupe ? "#E2E8F0" : "transparent"),
-          opacity: occupe ? 0.5 : 1
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          width: 32,
-          height: 32,
-          borderRadius: "50%",
-          background: sel ? "#D5A563" : "#1D2C41",
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 11,
-          fontWeight: 700,
-          flexShrink: 0
-        }
-      }, a.nom[0], a.prenom[0]), /*#__PURE__*/React.createElement("div", {
-        style: {
-          flex: 1
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontWeight: 600,
-          fontSize: 13,
-          color: "#1D2C41"
-        }
-      }, a.nom, " ", a.prenom), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 11,
-          color: "#64748B"
-        }
-      }, a.projet, " \xB7 ", matchRoles.join(", "))), occupe && /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 11,
-          color: "#EF4444",
-          fontWeight: 600
-        }
-      }, "Occup\xE9"), sel && /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: 11,
-          color: "#D5A563",
-          fontWeight: 600
-        }
-      }, "\u2713 S\xE9lectionn\xE9"));
-    })), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        gap: 8,
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingTop: 8,
-        borderTop: "1px solid #E2E8F0"
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 12,
-        color: "#64748B"
-      }
-    }, Object.keys(selected).length, " agent(s) s\xE9lectionn\xE9(s) \xB7 ", Object.keys(selected).length * datesList.length, " shifts \xE0 cr\xE9er"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        gap: 8
-      }
-    }, /*#__PURE__*/React.createElement(Btn, {
-      variant: "ghost",
-      onClick: onClose
-    }, "Annuler"), /*#__PURE__*/React.createElement(Btn, {
-      onClick: handleSave,
-      disabled: saving || Object.keys(selected).length === 0
-    }, saving ? "Enregistrement..." : "Affecter " + Object.keys(selected).length + "j")))));
-  };
+  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
+  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexDirection: "column",
       gap: 16
     }
+  }, navireAffectation && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#1D2C41",
+      color: "#fff",
+      padding: "10px 16px",
+      borderRadius: 8,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12
+    }
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "\u2693"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "Mode affectation \u2014 ", navireAffectation.nom), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#D5A563"
+    }
+  }, "Postes requis : ", (navireAffectation.postes || []).join(", "), " \xB7 Agents qualifi\xE9s surlign\xE9s en or"))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClearNavireAffectation,
+    style: {
+      background: "transparent",
+      border: "1px solid #D5A563",
+      color: "#D5A563",
+      borderRadius: 6,
+      padding: "4px 12px",
+      cursor: "pointer",
+      fontSize: 12
+    }
+  }, "Terminer l'affectation")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "center",
@@ -1522,7 +1371,7 @@ const ShiftModal = ({
       border: `2px solid ${shift === s ? SHIFT_COLORS[s] : "transparent"}`,
       transition: "all .15s"
     }
-  }, s))), ")} ", userRole !== "agent" && roleOptions.length > 0 && /*#__PURE__*/React.createElement(Input, {
+  }, s))), userRole !== "agent" && roleOptions.length > 0 && /*#__PURE__*/React.createElement(Input, {
     label: "R\xF4le / Poste",
     value: role,
     onChange: setRole,
@@ -1615,10 +1464,10 @@ const Navires = ({
   user,
   configRoles = [],
   setCell,
-  onBulkSetPlanning
+  onBulkSetPlanning,
+  onAffecterNavire
 }) => {
   const [form, setForm] = useState(null);
-  const [affectModal, setAffectModal] = useState(null); // navire à affecter
   const [detail, setDetail] = useState(null);
   const saveNavires = async next => {
     setNavires(next);
@@ -1809,13 +1658,58 @@ const Navires = ({
     "TERMINÉ": "#22C55E",
     "ANNULÉ": "#EF4444"
   };
+
+  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
+  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexDirection: "column",
       gap: 16
     }
+  }, navireAffectation && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#1D2C41",
+      color: "#fff",
+      padding: "10px 16px",
+      borderRadius: 8,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12
+    }
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "\u2693"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "Mode affectation \u2014 ", navireAffectation.nom), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#D5A563"
+    }
+  }, "Postes requis : ", (navireAffectation.postes || []).join(", "), " \xB7 Agents qualifi\xE9s surlign\xE9s en or"))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClearNavireAffectation,
+    style: {
+      background: "transparent",
+      border: "1px solid #D5A563",
+      color: "#D5A563",
+      borderRadius: 6,
+      padding: "4px 12px",
+      cursor: "pointer",
+      fontSize: 12
+    }
+  }, "Terminer l'affectation")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
@@ -1898,7 +1792,7 @@ const Navires = ({
     }, /*#__PURE__*/React.createElement(Btn, {
       variant: "ghost",
       small: true,
-      onClick: () => setAffectModal(n),
+      onClick: () => onAffecterNavire && onAffecterNavire(n),
       style: {
         background: "#D5A563",
         color: "#1D2C41",
@@ -1959,10 +1853,6 @@ const Navires = ({
         marginTop: 2
       }
     }, k.label)))));
-  }), affectModal && /*#__PURE__*/React.createElement(AffectNavireModal, {
-    navire: affectModal,
-    onClose: () => setAffectModal(null),
-    onBulkSetPlanning: onBulkSetPlanning
   }), form !== null && /*#__PURE__*/React.createElement(NavireForm, {
     initial: form.id ? form : null,
     onClose: () => setForm(null),
@@ -2187,13 +2077,58 @@ const Agents = ({
     }, "Enregistrer"))));
   };
   const filtered = agents.filter(a => `${a.nom} ${a.prenom} ${a.projet}`.toLowerCase().includes(search.toLowerCase()));
+
+  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
+  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexDirection: "column",
       gap: 16
     }
+  }, navireAffectation && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#1D2C41",
+      color: "#fff",
+      padding: "10px 16px",
+      borderRadius: 8,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12
+    }
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "\u2693"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "Mode affectation \u2014 ", navireAffectation.nom), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#D5A563"
+    }
+  }, "Postes requis : ", (navireAffectation.postes || []).join(", "), " \xB7 Agents qualifi\xE9s surlign\xE9s en or"))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClearNavireAffectation,
+    style: {
+      background: "transparent",
+      border: "1px solid #D5A563",
+      color: "#D5A563",
+      borderRadius: 6,
+      padding: "4px 12px",
+      cursor: "pointer",
+      fontSize: 12
+    }
+  }, "Terminer l'affectation")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
@@ -2463,13 +2398,58 @@ const Conges = ({
     "REFUSÉ": "#EF4444"
   };
   const myConges = user.role === "agent" ? conges.filter(c => c.agentId === user.agentId) : conges;
+
+  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
+  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexDirection: "column",
       gap: 16
     }
+  }, navireAffectation && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#1D2C41",
+      color: "#fff",
+      padding: "10px 16px",
+      borderRadius: 8,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12
+    }
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "\u2693"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "Mode affectation \u2014 ", navireAffectation.nom), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#D5A563"
+    }
+  }, "Postes requis : ", (navireAffectation.postes || []).join(", "), " \xB7 Agents qualifi\xE9s surlign\xE9s en or"))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClearNavireAffectation,
+    style: {
+      background: "transparent",
+      border: "1px solid #D5A563",
+      color: "#D5A563",
+      borderRadius: 6,
+      padding: "4px 12px",
+      cursor: "pointer",
+      fontSize: 12
+    }
+  }, "Terminer l'affectation")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
@@ -2667,13 +2647,58 @@ const Paie = ({
     return h;
   };
   const activeAgents = agents.filter(a => a.actif);
+
+  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
+  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexDirection: "column",
       gap: 16
     }
+  }, navireAffectation && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#1D2C41",
+      color: "#fff",
+      padding: "10px 16px",
+      borderRadius: 8,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12
+    }
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "\u2693"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "Mode affectation \u2014 ", navireAffectation.nom), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#D5A563"
+    }
+  }, "Postes requis : ", (navireAffectation.postes || []).join(", "), " \xB7 Agents qualifi\xE9s surlign\xE9s en or"))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClearNavireAffectation,
+    style: {
+      background: "transparent",
+      border: "1px solid #D5A563",
+      color: "#D5A563",
+      borderRadius: 6,
+      padding: "4px 12px",
+      cursor: "pointer",
+      fontSize: 12
+    }
+  }, "Terminer l'affectation")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
@@ -3002,13 +3027,58 @@ const KPIs = ({
     color: "#1E293B",
     bg: "#F8FAFC"
   }];
+
+  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
+  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexDirection: "column",
       gap: 16
     }
-  }, /*#__PURE__*/React.createElement("h2", {
+  }, navireAffectation && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#1D2C41",
+      color: "#fff",
+      padding: "10px 16px",
+      borderRadius: 8,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "\u2693"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "Mode affectation \u2014 ", navireAffectation.nom), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#D5A563"
+    }
+  }, "Postes requis : ", (navireAffectation.postes || []).join(", "), " \xB7 Agents qualifi\xE9s surlign\xE9s en or"))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClearNavireAffectation,
+    style: {
+      background: "transparent",
+      border: "1px solid #D5A563",
+      color: "#D5A563",
+      borderRadius: 6,
+      padding: "4px 12px",
+      cursor: "pointer",
+      fontSize: 12
+    }
+  }, "Terminer l'affectation")), /*#__PURE__*/React.createElement("h2", {
     style: {
       margin: 0,
       fontSize: 16,
@@ -3492,7 +3562,9 @@ function App() {
     user: user,
     configShifts: configShifts,
     configColors: configColors,
-    setCell: setCell
+    setCell: setCell,
+    navireAffectation: navireAffectation,
+    onClearNavireAffectation: () => setNavireAffectation(null)
   }), tab === "navires" && /*#__PURE__*/React.createElement(Navires, {
     navires: navires,
     setNavires: setNavires,
