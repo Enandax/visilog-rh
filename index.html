@@ -1658,9 +1658,6 @@ const Navires = ({
     "TERMINÉ": "#22C55E",
     "ANNULÉ": "#EF4444"
   };
-
-  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
-  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -2077,9 +2074,6 @@ const Agents = ({
     }, "Enregistrer"))));
   };
   const filtered = agents.filter(a => `${a.nom} ${a.prenom} ${a.projet}`.toLowerCase().includes(search.toLowerCase()));
-
-  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
-  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -2398,9 +2392,6 @@ const Conges = ({
     "REFUSÉ": "#EF4444"
   };
   const myConges = user.role === "agent" ? conges.filter(c => c.agentId === user.agentId) : conges;
-
-  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
-  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -2647,9 +2638,6 @@ const Paie = ({
     return h;
   };
   const activeAgents = agents.filter(a => a.actif);
-
-  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
-  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -3027,9 +3015,6 @@ const KPIs = ({
     color: "#1E293B",
     bg: "#F8FAFC"
   }];
-
-  // Mode affectation navire: filtrer sur les dates du navire et mettre en évidence les agents qualifiés
-  const navireQualifies = navireAffectation ? agents.filter(a => (a.actif === true || a.actif === "TRUE") && (a.roles || []).some(r => (navireAffectation.postes || []).includes(r))).map(a => a.id) : [];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
