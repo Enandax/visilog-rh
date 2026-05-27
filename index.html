@@ -2782,7 +2782,8 @@ const KPIs = ({
   agents,
   planning,
   navires,
-  conges
+  conges,
+  user
 }) => {
   const days = getWeekDays(0);
   const weekKeys = days.map(fmtDateKey);
@@ -3438,7 +3439,8 @@ function App() {
     agents: agents,
     planning: planning,
     navires: navires,
-    conges: conges
+    conges: conges,
+    user: user
   }), tab === "planning" && /*#__PURE__*/React.createElement(Planning, {
     agents: agents,
     planning: planning,
