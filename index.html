@@ -834,56 +834,32 @@ const Planning = ({
         borderLeft: "1px solid #E2E8F0",
         background: isToday ? "#FAF6EE" : undefined
       }
-    }, user.role === "direction" ? /*#__PURE__*/React.createElement("div", {
-      onClick: () => setModal({
-        agentId: ag.id,
-        dateKey: dk,
-        agent: ag
-      }),
-      style: {
-        background: bg,
-        color: tc,
-        borderRadius: 4,
-        padding: "4px 3px",
-        textAlign: "center",
-        cursor: "pointer",
-        minHeight: 38,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "opacity .15s"
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => {
+        if (user.role === "agent" && ag.id !== user.agentId) return;
+        setModal({
+          agentId: ag.id,
+          dateKey: dk,
+          agent: ag
+        });
       },
-      onMouseOver: e => e.currentTarget.style.opacity = ".8",
-      onMouseOut: e => e.currentTarget.style.opacity = "1"
-    }, cell.shift ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 10,
-        fontWeight: 700
-      }
-    }, cell.shift), cell.role && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        opacity: .85
-      }
-    }, cell.role)) : /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 16,
-        opacity: .3
-      }
-    }, "+")) : /*#__PURE__*/React.createElement("div", {
       style: {
         background: bg,
         color: tc,
         borderRadius: 4,
         padding: "4px 3px",
         textAlign: "center",
+        cursor: user.role === "agent" && ag.id !== user.agentId ? "default" : "pointer",
         minHeight: 38,
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center"
-      }
+        justifyContent: "center",
+        opacity: user.role === "agent" && ag.id !== user.agentId ? 0.4 : 1
+      },
+      onMouseOver: e => {
+        if (!(user.role === "agent" && ag.id !== user.agentId)) e.currentTarget.style.opacity = ".8";
+      },
+      onMouseOut: e => e.currentTarget.style.opacity = user.role === "agent" && ag.id !== user.agentId ? "0.4" : "1"
     }, cell.shift ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 10,
@@ -896,10 +872,10 @@ const Planning = ({
       }
     }, cell.role)) : /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: user.role === "direction" ? 16 : 10,
         opacity: .3
       }
-    }, "\u2014")));
+    }, user.role === "direction" ? "+" : "—")));
   })))))), modal && /*#__PURE__*/React.createElement(ShiftModal, {
     agent: modal.agent,
     dateKey: modal.dateKey,
@@ -2239,7 +2215,7 @@ const Conges = ({
 }) => {
   const [form, setForm] = useState(false);
   const [f, setF] = useState({
-    agentId: "",
+    agentId: user?.agentId || "",
     type: "CONGE",
     dateDebut: "",
     dateFin: "",
@@ -2250,19 +2226,24 @@ const Conges = ({
     await save(KEYS.conges, next);
   };
   const submitDemande = async () => {
-    if (!f.agentId || !f.dateDebut || !f.dateFin) return;
-    const newConge = {
+    const agentIdFinal = user?.role === "agent" ? user.agentId : f.agentId;
+    if (!agentIdFinal || !f.dateDebut || !f.dateFin) return;
+    const fFinal = {
       ...f,
+      agentId: agentIdFinal
+    };
+    const newConge = {
+      ...fFinal,
       id: `c${Date.now()}`,
       statut: "EN ATTENTE",
       dateDemande: new Date().toISOString().slice(0, 10)
     };
     const next = [...conges, newConge];
     await saveConges(next);
-    if (user?.token) await api("conges.create", f, user.token);
+    if (user?.token) await api("conges.create", fFinal, user.token);
     setForm(false);
     setF({
-      agentId: "",
+      agentId: user?.agentId || "",
       type: "CONGE",
       dateDebut: "",
       dateFin: "",
@@ -3051,6 +3032,7 @@ function App() {
       };
       setUser(u);
       await save(KEYS.user, u);
+      if (u.role === "agent") setTab("planning");
       // Charger les données depuis l'API
       const [ag, pl, nav, cong, cfg] = await Promise.all([api("agents.list", {}, r.token), api("planning.get", {}, r.token), api("navires.list", {}, r.token), api("conges.list", {}, r.token), api("config.get", {}, r.token)]);
       if (ag.ok) {
