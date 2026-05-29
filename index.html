@@ -899,11 +899,46 @@ const Planning = ({
     onSave: async data => {
       // Agent: validation/refus seulement — pas de modification du planning
       if (user?.role === "agent") {
-        await setCell(modal.agentId, modal.dateKey, {
-          ...getCell(modal.agentId, modal.dateKey),
-          validatedByAgent: data.validatedByAgent,
-          refusMotif: data.refusMotif || ""
-        });
+        try {
+          if (data.validatedByAgent === true) {
+            // Valider: route dédiée
+            const r = await api("planning.valider", {
+              agentId: modal.agentId,
+              date: modal.dateKey
+            }, user.token);
+            if (!r.ok) {
+              alert(r.error || "Erreur lors de la validation");
+              return;
+            }
+          } else {
+            // Refuser: route dédiée avec motif
+            const r = await api("planning.refuser", {
+              agentId: modal.agentId,
+              date: modal.dateKey,
+              motif: data.refusMotif || ""
+            }, user.token);
+            if (!r.ok) {
+              alert(r.error || "Erreur lors du refus");
+              return;
+            }
+          }
+          // Mettre à jour le state local
+          const key = modal.agentId + "_" + modal.dateKey;
+          const existing = planning[key] || {};
+          const next = {
+            ...planning,
+            [key]: {
+              ...existing,
+              validatedByAgent: data.validatedByAgent,
+              refusMotif: data.refusMotif || ""
+            }
+          };
+          setPlanning(next);
+          await save(KEYS.planning, next);
+        } catch (e) {
+          alert("Erreur réseau: " + e.message);
+          return;
+        }
         setModal(null);
         return;
       }
