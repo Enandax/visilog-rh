@@ -883,16 +883,54 @@ const Planning = ({
     configShifts: configShifts,
     configColors: configColors,
     weekDays: days,
+    userRole: user?.role,
     onSave: async data => {
+      // Agent: validation/refus seulement — pas de modification du planning
+      if (user?.role === "agent") {
+        await setCell(modal.agentId, modal.dateKey, {
+          ...getCell(modal.agentId, modal.dateKey),
+          validatedByAgent: data.validatedByAgent,
+          refusMotif: data.refusMotif || ""
+        });
+        setModal(null);
+        return;
+      }
+      // Direction/chef: modification complète
       const {
         extraDays,
         ...cellData
       } = data;
-      await setCell(modal.agentId, modal.dateKey, cellData);
-      if (extraDays && extraDays.length > 0) {
-        for (const dk of extraDays) {
-          await setCell(modal.agentId, dk, cellData);
-        }
+      const allDays = [modal.dateKey, ...(extraDays || [])];
+      const newPlan = {
+        ...planning
+      };
+      allDays.forEach(dk => {
+        const ex = planning[modal.agentId + "_" + dk] || {};
+        newPlan[modal.agentId + "_" + dk] = {
+          ...ex,
+          ...cellData,
+          shiftInitial: ex.shiftInitial || (ex.shift ? ex.shift : cellData.shift)
+        };
+      });
+      setPlanning(newPlan);
+      await save(KEYS.planning, newPlan);
+      if (user?.token) {
+        const cells = allDays.map(dk => {
+          const ex = planning[modal.agentId + "_" + dk] || {};
+          return {
+            agentId: modal.agentId,
+            date: dk,
+            shift: cellData.shift || "",
+            role: cellData.role || "",
+            note: cellData.note || "",
+            shiftInitial: ex.shiftInitial || (ex.shift ? ex.shift : cellData.shift) || "",
+            validatedByAgent: ex.validatedByAgent,
+            refusMotif: ex.refusMotif || ""
+          };
+        });
+        if (cells.length === 1) await api("planning.setCell", cells[0], user.token);else await api("planning.bulkSet", {
+          cells
+        }, user.token);
       }
       setModal(null);
     },
