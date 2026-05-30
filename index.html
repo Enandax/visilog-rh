@@ -1639,6 +1639,10 @@ const Navires = ({
   user,
   configRoles
 }) => {
+  const {
+    toast,
+    showToast
+  } = useToast();
   const [form, setForm] = useState(null);
   const [detail, setDetail] = useState(null);
   const saveNavires = async next => {
