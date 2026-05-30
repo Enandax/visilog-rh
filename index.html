@@ -4,7 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VISILOG RH — EGBS Digital Supply Chain</title>
-  <style>* { box-sizing: border-box; } body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #F1F5F9; } input, select, button { font-family: inherit; }</style>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #F1F5F9; }
+    input, select, button { font-family: inherit; }
+    @keyframes slideDown {
+      from { opacity:0; transform:translateX(-50%) translateY(-12px); }
+      to   { opacity:1; transform:translateX(-50%) translateY(0); }
+    }
+  </style>
 </head>
 <body>
   <div id="root"></div>
@@ -316,6 +324,41 @@ const fmtMois = (y, m) => new Date(y, m - 1, 1).toLocaleDateString("fr-FR", {
 const heuresParShift = mode => mode === "8h" ? 8 : mode === "12h" ? 12 : 16;
 const shiftsParJour = mode => mode === "8h" ? 3 : mode === "12h" ? 2 : 1;
 
+// ─── TOAST NOTIFICATION ──────────────────────────────────────
+const Toast = ({
+  message,
+  type = "success",
+  onClose
+}) => {
+  useEffect(() => {
+    const t = setTimeout(onClose, 2500);
+    return () => clearTimeout(t);
+  }, []);
+  const colors = {
+    success: "#22C55E",
+    error: "#EF4444",
+    info: "#3B82F6"
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      top: 24,
+      right: 24,
+      zIndex: 9999,
+      background: colors[type] || colors.success,
+      color: "#fff",
+      padding: "12px 20px",
+      borderRadius: 10,
+      fontWeight: 600,
+      fontSize: 14,
+      boxShadow: "0 4px 20px #0004",
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", null, type === "success" ? "✓" : type === "error" ? "✗" : "ℹ"), message);
+};
+
 // ─── COMPOSANTS UI ──────────────────────────────────────────
 const Badge = ({
   children,
@@ -529,8 +572,7 @@ const Login = ({
       background: "#1D2C41",
       display: "flex",
       alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "'DM Sans',sans-serif"
+      justifyContent: "center"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -538,7 +580,7 @@ const Login = ({
       borderRadius: 16,
       padding: 40,
       width: 360,
-      boxShadow: "0 30px 80px rgba(0,0,0,.4)"
+      boxShadow: "0 30px 80px rgba(0,0,0,.3)"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -551,8 +593,7 @@ const Login = ({
     style: {
       height: 56,
       objectFit: "contain",
-      margin: "0 auto 16px",
-      display: "block"
+      marginBottom: 12
     }
   }), /*#__PURE__*/React.createElement("h1", {
     style: {
@@ -623,6 +664,22 @@ const Login = ({
   }, "Premier acc\xE8s : admin / visilog2026"))));
 };
 
+// ─── HOOK useToast ───────────────────────────────────────────
+const useToast = () => {
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = "success") => {
+    setToast({
+      message,
+      type
+    });
+    setTimeout(() => setToast(null), 2500);
+  };
+  return {
+    toast,
+    showToast
+  };
+};
+
 // ─── MODULE : PLANNING ──────────────────────────────────────
 const Planning = ({
   agents,
@@ -667,7 +724,10 @@ const Planning = ({
       flexDirection: "column",
       gap: 16
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, toast && /*#__PURE__*/React.createElement(Toast, {
+    message: toast.message,
+    type: toast.type
+  }), "16}}>", /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "center",
@@ -939,7 +999,7 @@ const Planning = ({
           };
           setPlanning(next);
           await save(KEYS.planning, next);
-          alert(data.validatedByAgent === true ? "✓ Shift validé" : "✗ Refus enregistré");
+          showToast(data.validatedByAgent === true ? "Shift validé ✓" : "Refus enregistré ✓");
         } catch (e) {
           console.error("[VISILOG] Erreur:", e);
           alert("Erreur: " + e.message);
@@ -985,6 +1045,7 @@ const Planning = ({
           cells
         }, user.token);
       }
+      showToast(allDays.length > 1 ? `Planning enregistré (${allDays.length} jours)` : "Planning enregistré");
       setModal(null);
     },
     onClose: () => setModal(null)
@@ -1256,12 +1317,18 @@ const ShiftModal = ({
     })
   }, multiDays.length > 1 ? "Enregistrer (" + multiDays.length + "j)" : "Enregistrer")))));
 };
+// ─── TOAST NOTIFICATION ──────────────────────────────────────
+
 // ─── MODULE : GESTION DES REFUS ─────────────────────────────
 const RefusPanel = ({
   planning,
   agents,
   setCell
 }) => {
+  const {
+    toast,
+    showToast
+  } = useToast();
   const refus = Object.entries(planning).filter(([k, v]) => v.validatedByAgent === false || v.validatedByAgent === "false").map(([key, cell]) => {
     const [agentId, date] = key.split("_");
     const agent = agents.find(a => a.id === agentId) || {};
@@ -1287,6 +1354,7 @@ const RefusPanel = ({
       validatedByAgent: null,
       refusMotif: ""
     });
+    showToast("Refus rejeté — l'agent doit venir", "error");
     setExpanded(null);
   };
   const accept = async item => {
@@ -1296,6 +1364,7 @@ const RefusPanel = ({
       validatedByAgent: null,
       refusMotif: ""
     });
+    showToast("Refus validé — agent mis en REPOS");
     setExpanded(null);
   };
   const replace = async (item, rid) => {
@@ -1312,6 +1381,8 @@ const RefusPanel = ({
       validatedByAgent: null,
       refusMotif: ""
     });
+    showToast("Refus validé — agent mis en REPOS");
+    showToast("Remplacement effectué avec succès");
     setExpanded(null);
   };
   if (refus.length === 0) return /*#__PURE__*/React.createElement("div", {
@@ -1351,7 +1422,10 @@ const RefusPanel = ({
       flexDirection: "column",
       gap: 12
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, toast && /*#__PURE__*/React.createElement(Toast, {
+    message: toast.message,
+    type: toast.type
+  }), "12}}>", /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "center",
@@ -1559,7 +1633,8 @@ const Navires = ({
   planning,
   setPlanning,
   user,
-  configRoles
+  configRoles,
+  showToast
 }) => {
   const [form, setForm] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -1752,7 +1827,10 @@ const Navires = ({
       flexDirection: "column",
       gap: 16
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, toast && /*#__PURE__*/React.createElement(Toast, {
+    message: toast.message,
+    type: toast.type
+  }), "16}}>", /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
@@ -1902,6 +1980,7 @@ const Navires = ({
       const next = isNew ? [...navires, navireData] : navires.map(n => n.id === form.id ? navireData : n);
       saveNavires(next);
       await apiSaveNavire(navireData, isNew);
+      showToast(isNew ? "Navire créé ✓" : "Navire mis à jour ✓");
       setForm(null);
     }
   }));
@@ -1913,7 +1992,8 @@ const Agents = ({
   setAgents,
   user,
   configProjets,
-  configRoles
+  configRoles,
+  showToast
 }) => {
   const [form, setForm] = useState(null);
   const [search, setSearch] = useState("");
@@ -2117,7 +2197,10 @@ const Agents = ({
       flexDirection: "column",
       gap: 16
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, toast && /*#__PURE__*/React.createElement(Toast, {
+    message: toast.message,
+    type: toast.type
+  }), "16}}>", /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
@@ -2289,6 +2372,7 @@ const Agents = ({
       const next = isNew ? [...agents, agentData] : agents.map(a => a.id === form.id ? agentData : a);
       saveAgents(next);
       await apiSaveAgent(agentData, isNew);
+      showToast(isNew ? "Agent créé ✓" : "Agent mis à jour ✓");
       setForm(null);
     }
   }));
@@ -2302,7 +2386,8 @@ const Conges = ({
   planning,
   setPlanning,
   user,
-  configShifts
+  configShifts,
+  showToast
 }) => {
   const [form, setForm] = useState(false);
   const [f, setF] = useState({
@@ -2332,6 +2417,7 @@ const Conges = ({
     const next = [...conges, newConge];
     await saveConges(next);
     if (user?.token) await api("conges.create", fFinal, user.token);
+    showToast("Demande envoyée avec succès");
     setForm(false);
     setF({
       agentId: user?.agentId || "",
@@ -2398,7 +2484,10 @@ const Conges = ({
       flexDirection: "column",
       gap: 16
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, toast && /*#__PURE__*/React.createElement(Toast, {
+    message: toast.message,
+    type: toast.type
+  }), "16}}>", /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
@@ -3089,6 +3178,12 @@ const NAV = [{
 function App() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("kpis");
+  const [toast, setToast] = useState(null);
+  const showToast = (msg, type = "success") => setToast({
+    msg,
+    type,
+    k: Date.now()
+  });
   const [navireAffectation, setNavireAffectation] = useState(null);
   const [agents, setAgents] = useState([]);
   const [planning, setPlanning] = useState({});
@@ -3236,7 +3331,12 @@ function App() {
   });
   const agentNav = user.role === "agent" ? NAV.filter(n => ["planning", "conges"].includes(n.id)) : NAV.filter(n => !n.directionOnly || user.role === "direction");
   const pendingConges = conges.filter(c => c.statut === "EN ATTENTE").length;
-  return /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, toast && /*#__PURE__*/React.createElement(Toast, {
+    key: toast.k,
+    message: toast.msg,
+    type: toast.type,
+    onClose: () => setToast(null)
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
       background: "#F1F5F9",
@@ -3362,13 +3462,15 @@ function App() {
     planning: planning,
     setPlanning: setPlanning,
     user: user,
-    configRoles: configRoles
+    configRoles: configRoles,
+    showToast: showToast
   }), tab === "agents" && user.role === "direction" && /*#__PURE__*/React.createElement(Agents, {
     agents: agents,
     setAgents: setAgents,
     user: user,
     configProjets: configProjets,
-    configRoles: configRoles
+    configRoles: configRoles,
+    showToast: showToast
   }), tab === "conges" && /*#__PURE__*/React.createElement(Conges, {
     agents: agents,
     conges: conges,
@@ -3376,7 +3478,8 @@ function App() {
     planning: planning,
     setPlanning: setPlanning,
     user: user,
-    configShifts: configShifts
+    configShifts: configShifts,
+    showToast: showToast
   }), tab === "paie" && user.role === "direction" && /*#__PURE__*/React.createElement(Paie, {
     agents: agents,
     planning: planning,
@@ -3385,7 +3488,7 @@ function App() {
     planning: planning,
     agents: agents,
     setCell: setCell
-  }))));
+  })))));
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
