@@ -690,6 +690,10 @@ const Planning = ({
   configShifts,
   configColors
 }) => {
+  const {
+    toast,
+    showToast
+  } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
   const [modal, setModal] = useState(null); // {agentId, dateKey}
   const [filterProjet, setFilterProjet] = useState("");
@@ -1633,8 +1637,7 @@ const Navires = ({
   planning,
   setPlanning,
   user,
-  configRoles,
-  showToast
+  configRoles
 }) => {
   const [form, setForm] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -1992,9 +1995,12 @@ const Agents = ({
   setAgents,
   user,
   configProjets,
-  configRoles,
-  showToast
+  configRoles
 }) => {
+  const {
+    toast,
+    showToast
+  } = useToast();
   const [form, setForm] = useState(null);
   const [search, setSearch] = useState("");
   const saveAgents = async next => {
@@ -2386,9 +2392,12 @@ const Conges = ({
   planning,
   setPlanning,
   user,
-  configShifts,
-  showToast
+  configShifts
 }) => {
+  const {
+    toast,
+    showToast
+  } = useToast();
   const [form, setForm] = useState(false);
   const [f, setF] = useState({
     agentId: user?.agentId || "",
@@ -3178,12 +3187,10 @@ const NAV = [{
 function App() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("kpis");
-  const [toast, setToast] = useState(null);
-  const showToast = (msg, type = "success") => setToast({
-    msg,
-    type,
-    k: Date.now()
-  });
+  const {
+    toast,
+    showToast
+  } = useToast();
   const [navireAffectation, setNavireAffectation] = useState(null);
   const [agents, setAgents] = useState([]);
   const [planning, setPlanning] = useState({});
@@ -3454,7 +3461,13 @@ function App() {
     navires: navires,
     user: user,
     configShifts: configShifts,
-    configColors: configColors
+    configColors: configColors,
+    configRoles: configRoles,
+    configProjets: configProjets,
+    setCell: setCell,
+    onBulkSetPlanning: onBulkSetPlanning,
+    navireAffectation: navireAffectation,
+    onAffecterNavire: nav => setNavireAffectation(nav)
   }), tab === "navires" && /*#__PURE__*/React.createElement(Navires, {
     navires: navires,
     setNavires: setNavires,
@@ -3462,15 +3475,13 @@ function App() {
     planning: planning,
     setPlanning: setPlanning,
     user: user,
-    configRoles: configRoles,
-    showToast: showToast
+    configRoles: configRoles
   }), tab === "agents" && user.role === "direction" && /*#__PURE__*/React.createElement(Agents, {
     agents: agents,
     setAgents: setAgents,
     user: user,
     configProjets: configProjets,
-    configRoles: configRoles,
-    showToast: showToast
+    configRoles: configRoles
   }), tab === "conges" && /*#__PURE__*/React.createElement(Conges, {
     agents: agents,
     conges: conges,
@@ -3478,8 +3489,7 @@ function App() {
     planning: planning,
     setPlanning: setPlanning,
     user: user,
-    configShifts: configShifts,
-    showToast: showToast
+    configShifts: configShifts
   }), tab === "paie" && user.role === "direction" && /*#__PURE__*/React.createElement(Paie, {
     agents: agents,
     planning: planning,
