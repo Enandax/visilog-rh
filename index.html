@@ -2720,17 +2720,8 @@ const Paie = ({
     for (let d = 1; d <= daysInMonth; d++) {
       const dk = `${annee}-${String(mois).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const cell = planning[`${agentId}_${dk}`];
-      if (cell?.shift && !["REPOS", "CONGE"].includes(cell.shift)) {
-        const h_map = {
-          MATIN: 8,
-          SOIR: 8,
-          NUIT: 8,
-          MISSION: 10,
-          FORMATION: 8,
-          "JOURNALIER 08H": 8,
-          "JOURNALIER 04H": 4
-        };
-        h += h_map[cell.shift] || 8;
+      if (cell?.shift) {
+        h += heuresParShift(cell.shift, "8h");
       }
     }
     return h;
