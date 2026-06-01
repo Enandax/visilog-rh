@@ -3818,7 +3818,9 @@ const KPIs = ({
   planning,
   navires,
   conges,
-  user
+  user,
+  realisation,
+  incidents
 }) => {
   const isMobile = useIsMobile();
   const days = getWeekDays(0);
@@ -3852,6 +3854,41 @@ const KPIs = ({
     }
     return h > 192;
   });
+ // Calculs Réalisation
+const realKeys = Object.keys(realisation || {});
+const totalHPlan = Object.keys(planning).reduce((s, k) => {
+  const c = planning[k];
+  return s + (c.shift ? heuresParShift(c.shift, "8h") : 0);
+}, 0);
+const totalHReal = realKeys.reduce((s, k) => s + (realisation[k]?.heuresReelles || 0), 0);
+const txRealisation = totalHPlan > 0 ? Math.round(totalHReal / totalHPlan * 100) : 0;
+const hSup = realKeys.reduce((s, k) => {
+  const r = realisation[k];
+  const p = planning[k];
+  if (!r?.heuresReelles || !p?.shift) return s;
+  const diff = r.heuresReelles - heuresParShift(p.shift, "8h");
+  return s + (diff > 0 ? diff : 0);
+}, 0);
+const hManq = realKeys.reduce((s, k) => {
+  const r = realisation[k];
+  const p = planning[k];
+  if (!r?.heuresReelles || !p?.shift) return s;
+  const diff = heuresParShift(p.shift, "8h") - r.heuresReelles;
+  return s + (diff > 0 ? diff : 0);
+}, 0);
+// Incidents
+const incidentsSem = (incidents || []).filter(i => {
+  const d = new Date(i.date);
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - now.getDay() + 1);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return d >= monday && d <= sunday;
+});
+const incidentsOuverts = (incidents || []).filter(i => i.statut === "Ouvert").length;
+
   const kpis = [{
     label: "Couverture semaine",
     val: `${tauxCouverture}%`,
@@ -4506,41 +4543,8 @@ function App() {
       justifyContent: "center"
     }
   }, "!") : null))))));
-} // Calculs Réalisation
-const realKeys = Object.keys(realisation || {});
-const totalHPlan = Object.keys(planning).reduce((s, k) => {
-  const c = planning[k];
-  return s + (c.shift ? heuresParShift(c.shift, "8h") : 0);
-}, 0);
-const totalHReal = realKeys.reduce((s, k) => s + (realisation[k]?.heuresReelles || 0), 0);
-const txRealisation = totalHPlan > 0 ? Math.round(totalHReal / totalHPlan * 100) : 0;
-const hSup = realKeys.reduce((s, k) => {
-  const r = realisation[k];
-  const p = planning[k];
-  if (!r?.heuresReelles || !p?.shift) return s;
-  const diff = r.heuresReelles - heuresParShift(p.shift, "8h");
-  return s + (diff > 0 ? diff : 0);
-}, 0);
-const hManq = realKeys.reduce((s, k) => {
-  const r = realisation[k];
-  const p = planning[k];
-  if (!r?.heuresReelles || !p?.shift) return s;
-  const diff = heuresParShift(p.shift, "8h") - r.heuresReelles;
-  return s + (diff > 0 ? diff : 0);
-}, 0);
-// Incidents
-const incidentsSem = (incidents || []).filter(i => {
-  const d = new Date(i.date);
-  const now = new Date();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - now.getDay() + 1);
-  monday.setHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return d >= monday && d <= sunday;
-});
-const incidentsOuverts = (incidents || []).filter(i => i.statut === "Ouvert").length;
 
+}
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
 </body>
