@@ -4564,7 +4564,8 @@ const NAV = [{
 }, {
   id: "fiche",
   label: "Ma Fiche",
-  icon: "📋"
+  icon: "📋",
+  agentOnly: true
 }, {
   id: "bulletin",
   label: "Bulletins de Paie",
@@ -4732,7 +4733,7 @@ function App() {
   if (!user) return /*#__PURE__*/React.createElement(Login, {
     onLogin: handleLogin
   });
-  const agentNav = user.role === "agent" ? NAV.filter(n => ["planning", "conges", "fiche", "bulletin"].includes(n.id)) : user.role === "cellule" ? NAV.filter(n => !["agents", "paie", "refus"].includes(n.id) && !n.directionOnly) : NAV.filter(n => !n.directionOnly || user.role === "direction");
+  const agentNav = user.role === "agent" ? NAV.filter(n => ["planning", "conges", "fiche", "bulletin"].includes(n.id)) : user.role === "cellule" ? NAV.filter(n => !["agents", "paie", "refus"].includes(n.id) && !n.directionOnly && !n.agentOnly) : NAV.filter(n => (!n.directionOnly || user.role === "direction") && !n.agentOnly);
 
   const agentInfo = user?.role === "agent" ? agents.find(a => a.id === user.agentId) : null;
   const pendingConges = conges.filter(c => c.statut === "EN ATTENTE").length;
