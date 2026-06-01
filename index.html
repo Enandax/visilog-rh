@@ -4185,8 +4185,9 @@ const FichePresence = ({agent, realisation, planning, user}) => {
 
   const fmtTime = (s) => {
     if (!s) return '';
-    if (s.includes('T')) return s.split('T')[1]?.slice(0,5) || s.slice(-5);
-    return s.slice(0,5);
+    const sep = s.includes('T') ? 'T' : s.includes(' ') ? ' ' : null;
+    if (sep) return s.split(sep)[1]?.slice(0,5) || '';
+    return s.length > 5 ? '' : s.slice(0,5);
   };
 
   const handleSigner = () => {
