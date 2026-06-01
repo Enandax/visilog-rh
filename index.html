@@ -4539,9 +4539,9 @@ const ImportPointage = ({agents, user, onImported}) => {
   const parseExcelDate = (val) => {
     if (!val) return "";
     if (typeof val === 'number') {
-      // Numéro série Excel → date
-      const d = new Date((val - 25569) * 86400 * 1000);
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      // Utiliser UTC pour éviter le décalage de fuseau horaire
+      const d = new Date(Math.round((val - 25569) * 86400) * 1000);
+      return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
     }
     const s = String(val).trim();
     // Format DD/MM/YYYY HH:MM ou YYYY-MM-DD
@@ -4555,19 +4555,30 @@ const ImportPointage = ({agents, user, onImported}) => {
   const parseExcelDatetime = (val) => {
     if (!val) return "";
     if (typeof val === 'number') {
-      const d = new Date((val - 25569) * 86400 * 1000);
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + 
-             String(d.getDate()).padStart(2,'0') + 'T' +
-             String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      // Excel stocke les dates comme nombre de jours depuis 1900-01-01
+      // Correction: utiliser les composantes locales pour éviter le décalage UTC
+      const totalDays = val - 25569; // jours depuis epoch Unix (1970-01-01)
+      const totalSecs = Math.round(totalDays * 86400);
+      const d = new Date(totalSecs * 1000);
+      // Utiliser les valeurs UTC pour éviter le décalage fuseau horaire
+      const yyyy = d.getUTCFullYear();
+      const mm = String(d.getUTCMonth()+1).padStart(2,'0');
+      const dd = String(d.getUTCDate()).padStart(2,'0');
+      const hh = String(d.getUTCHours()).padStart(2,'0');
+      const mi = String(d.getUTCMinutes()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
     }
     return String(val).trim();
   };
 
   const parseDuration = (val) => {
-    if (!val) return "00:00";
+    if (!val) return "00:30"; // défaut 30 min si vide
     if (typeof val === 'number') {
-      // Fraction de jour Excel: 0.0208333 = 30min
-      const totalMins = Math.round(val * 24 * 60);
+      // Fraction de jour Excel ou numéro série avec heure
+      // Si val > 1, c'est un datetime: extraire seulement la partie décimale
+      const fraction = val > 1 ? val - Math.floor(val) : val;
+      const totalMins = Math.round(fraction * 24 * 60);
+      if (totalMins === 0) return "00:00";
       return String(Math.floor(totalMins/60)).padStart(2,'0') + ':' + String(totalMins%60).padStart(2,'0');
     }
     const s = String(val).trim();
@@ -4585,7 +4596,7 @@ const ImportPointage = ({agents, user, onImported}) => {
       const XLSX = window.XLSX;
       if (!XLSX) { showToast("Librairie XLSX non chargée", "error"); setImporting(false); return; }
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, {type:'array', cellDates: false});
+      const wb = XLSX.read(buf, {type:'array', cellDates: false, cellNF: false, raw: false});
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
       
@@ -4616,13 +4627,19 @@ const ImportPointage = ({agents, user, onImported}) => {
         const prenom = String(r[colPrenom] || "").trim();
         
         // Trouver l'agent
+        // Chercher par agentId en priorité (exact), puis par nom/prénom (fallback)
         let agent = agentId ? agents.find(a => a.id === agentId) : null;
-        if (!agent && nom) agent = agents.find(a => 
-          a.nom.toLowerCase() === nom.toLowerCase() && 
-          a.prenom.toLowerCase() === prenom.toLowerCase()
-        );
-        
-        if (!agent) { errs.push(`L${i+1}: Agent "${nom} ${prenom}" (${agentId}) non trouvé`); continue; }
+        if (!agent && nom) {
+          agent = agents.find(a => 
+            a.nom.toLowerCase() === nom.toLowerCase() && 
+            a.prenom.toLowerCase() === prenom.toLowerCase()
+          );
+        }
+        // Si toujours pas trouvé mais agentId fourni: utiliser nom/prénom du fichier directement
+        if (!agent && agentId) {
+          agent = { id: agentId, nom: nom, prenom: prenom };
+        }
+        if (!agent) { errs.push(`L${i+1}: Agent "${nom} ${prenom}" sans agentId`); continue; }
         
         const heEntree = parseExcelDatetime(r[colEntree]);
         const heSortie = parseExcelDatetime(r[colSortie]);
