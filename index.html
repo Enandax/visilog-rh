@@ -129,7 +129,7 @@ const save = async (key, val) => {
 // ─── SEED DATA ───────────────────────────────────────────────
 const PROJETS = ["COSUMAR PFO", "STEP-UP", "COSTOMA", "FOODIPEX", "MARJANE SAPINO", "CELLULE SIEGE", "DIGIBAY"];
 const ROLES_LIST = ["50KG", "PFC", "PFM", "Planificateur", "Chargement", "Douane", "Raffinerie", "Superviseur PFO", "Arrivée PFO", "Maamoura PFO", "Agent COSTOMA", "Agent FOODIPEX", "Quai Marjane", "Kiosque Marjane", "Superviseur Cellule"];
-const SHIFTS = ["MATIN", "SOIR", "NUIT", "REPOS", "MISSION", "CONGE", "FORMATION", "JOURNALIER 08H", "JOURNALIER 04H", "FERIE", "MATIN 12H", "NUIT 12H", "MATIN 16H", "SOIR 16H", "NUIT 16H"];
+const SHIFTS = ["MATIN", "SOIR", "NUIT", "REPOS", "MISSION", "CONGE", "FORMATION", "JOURNALIER 08H", "JOURNALIER 04H", "FERIE", "MATIN 12H", "NUIT 12H", "MATIN 16H", "SOIR 16H", "NUIT 16H", "ARRET MALADIE", "CONVOQUE SIEGE", "AUDITEUR DIGIBAY", "MISSION DIGIBAY", "MISE A PIED"];
 const SHIFT_COLORS = {
   MATIN: "#F59E0B",
   SOIR: "#3B82F6",
@@ -146,6 +146,10 @@ const SHIFT_COLORS = {
   "MATIN 16H": "#B45309",
   "SOIR 16H": "#1D4ED8",
   "NUIT 16H": "#312E81",
+  "ARRET MALADIE": "#DC2626",
+  "CONVOQUE SIEGE": "#0369A1",
+  "AUDITEUR DIGIBAY": "#0F766E",
+  "MISE A PIED": "#7C3AED",
   "": "#334155"
 };
 const SHIFT_TEXT = {
@@ -164,6 +168,10 @@ const SHIFT_TEXT = {
   "MATIN 16H": "#fff",
   "SOIR 16H": "#fff",
   "NUIT 16H": "#fff",
+  "ARRET MALADIE": "#fff",
+  "CONVOQUE SIEGE": "#fff",
+  "AUDITEUR DIGIBAY": "#fff",
+  "MISE A PIED": "#fff",
   "": "#94A3B8"
 };
 const SEED_AGENTS = [{
@@ -320,7 +328,21 @@ const fmtMois = (y, m) => new Date(y, m - 1, 1).toLocaleDateString("fr-FR", {
   month: "long",
   year: "numeric"
 });
-const heuresParShift = mode => mode === "8h" ? 8 : mode === "12h" ? 12 : 16;
+const heuresParShift = (shift, mode) => {
+  if (["ARRET MALADIE", "CONVOQUE SIEGE", "MISE A PIED"].includes(shift)) return 0;
+  if (shift === "AUDITEUR DIGIBAY") return 8;
+  if (shift === "REPOS" || shift === "FERIE" || shift === "CONGE") return 0;
+  return mode === "8h" ? 8 : mode === "12h" ? 12 : 16;
+};
+const heuresParShiftType = shift => {
+  if (["ARRET MALADIE", "CONVOQUE SIEGE", "AUDITEUR DIGIBAY", "MISE A PIED", "REPOS", "CONGE", "FERIE"].includes(shift)) return 0;
+  if (shift === "MISSION DIGIBAY") return 8;
+  if (shift === "MATIN 12H" || shift === "NUIT 12H") return 12;
+  if (shift === "MATIN 16H" || shift === "SOIR 16H" || shift === "NUIT 16H") return 16;
+  if (shift === "JOURNALIER 04H") return 4;
+  if (shift === "JOURNALIER 08H") return 8;
+  return 8; // MATIN, SOIR, NUIT, MISSION, FORMATION par défaut
+};
 const shiftsParJour = mode => mode === "8h" ? 3 : mode === "12h" ? 2 : 1;
 
 // ─── TOAST NOTIFICATION ──────────────────────────────────────
