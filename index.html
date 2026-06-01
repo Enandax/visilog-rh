@@ -329,10 +329,14 @@ const fmtMois = (y, m) => new Date(y, m - 1, 1).toLocaleDateString("fr-FR", {
   year: "numeric"
 });
 const heuresParShift = (shift, mode) => {
-  if (["ARRET MALADIE", "CONVOQUE SIEGE", "MISE A PIED"].includes(shift)) return 0;
+  if (!shift) return 0;
+  if (["ARRET MALADIE", "CONVOQUE SIEGE", "MISE A PIED", "REPOS", "FERIE", "CONGE"].includes(shift)) return 0;
   if (shift === "AUDITEUR DIGIBAY") return 8;
-  if (shift === "REPOS" || shift === "FERIE" || shift === "CONGE") return 0;
-  return mode === "8h" ? 8 : mode === "12h" ? 12 : 16;
+  // Lire les heures directement depuis le nom du shift (ex: "MATIN 12H" -> 12)
+  const matchH = shift.match(/(\d+)H$/);
+  if (matchH) return parseInt(matchH[1]);
+  // Shifts standard: utiliser le mode du navire
+  return mode === "12h" ? 12 : mode === "16h" ? 16 : 8;
 };
 const heuresParShiftType = shift => {
   if (["ARRET MALADIE", "CONVOQUE SIEGE", "AUDITEUR DIGIBAY", "MISE A PIED", "REPOS", "CONGE", "FERIE"].includes(shift)) return 0;
