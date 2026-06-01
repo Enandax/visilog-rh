@@ -15,7 +15,8 @@
 </head>
 <body>
   <div id="root"></div>
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script>
 const {useState,useEffect,useCallback,useRef} = React;
@@ -4581,7 +4582,8 @@ const ImportPointage = ({agents, user, onImported}) => {
     setImporting(true);
     setErrors([]);
     try {
-      const XLSX = await import('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js').catch(() => window.XLSX);
+      const XLSX = window.XLSX;
+      if (!XLSX) { showToast("Librairie XLSX non chargée", "error"); setImporting(false); return; }
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, {type:'array', cellDates: false});
       const ws = wb.Sheets[wb.SheetNames[0]];
