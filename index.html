@@ -4538,13 +4538,15 @@ const ImportPointage = ({agents, user, onImported}) => {
 
   const parseExcelDate = (val) => {
     if (!val) return "";
-    if (val instanceof Date) {
-      // cellDates:true → XLSX.js crée les dates en UTC → lire UTC
-      return val.getUTCFullYear() + '-' + String(val.getUTCMonth()+1).padStart(2,'0') + '-' + String(val.getUTCDate()).padStart(2,'0');
-    }
     if (typeof val === 'number') {
-      const d = new Date(Math.round((val - 25569) * 86400) * 1000);
-      return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
+      const unixDays2 = Math.floor(val) - 25569;
+      const dateObj2 = new Date(unixDays2 * 86400000);
+      return dateObj2.getUTCFullYear() + '-' + String(dateObj2.getUTCMonth()+1).padStart(2,'0') + '-' + String(dateObj2.getUTCDate()).padStart(2,'0');
+    }
+    if (typeof val === 'string') {
+      const m = val.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+      return val.slice(0,10);
     }
     const s = String(val).trim();
     // Format DD/MM/YYYY HH:MM ou YYYY-MM-DD
@@ -4557,25 +4559,24 @@ const ImportPointage = ({agents, user, onImported}) => {
 
   const parseExcelDatetime = (val) => {
     if (!val) return "";
-    if (val instanceof Date) {
-      // cellDates:true → XLSX.js crée les dates en UTC → lire composantes UTC
-      const yyyy = val.getUTCFullYear();
-      const mm = String(val.getUTCMonth()+1).padStart(2,'0');
-      const dd = String(val.getUTCDate()).padStart(2,'0');
-      const hh = String(val.getUTCHours()).padStart(2,'0');
-      const mi = String(val.getUTCMinutes()).padStart(2,'0');
-      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-    }
     if (typeof val === 'number') {
-      // Fallback si cellDates:false: composantes UTC
-      const totalSecs = Math.round((val - 25569) * 86400);
-      const d = new Date(totalSecs * 1000);
-      const yyyy = d.getUTCFullYear();
-      const mm = String(d.getUTCMonth()+1).padStart(2,'0');
-      const dd = String(d.getUTCDate()).padStart(2,'0');
-      const hh = String(d.getUTCHours()).padStart(2,'0');
-      const mi = String(d.getUTCMinutes()).padStart(2,'0');
-      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+      // Nombre série Excel → offset 25569 = 1970-01-01, sans aucune conversion locale
+      const unixDays = Math.floor(val) - 25569;
+      const timeFraction = val - Math.floor(val);
+      const totalMinutes = Math.round(timeFraction * 24 * 60);
+      const hh = Math.floor(totalMinutes / 60) % 24;
+      const mi = totalMinutes % 60;
+      const dateObj = new Date(unixDays * 86400000); // minuit UTC
+      const yyyy = dateObj.getUTCFullYear();
+      const mm = String(dateObj.getUTCMonth()+1).padStart(2,'0');
+      const dd = String(dateObj.getUTCDate()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}T${String(hh).padStart(2,'0')}:${String(mi).padStart(2,'0')}`;
+    }
+    if (typeof val === 'string') {
+      // Déjà formaté "DD/MM/YYYY HH:MM" ou ISO
+      const m = val.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+      if (m) return `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}`;
+      return val.slice(0,16);
     }
     return String(val).trim();
   };
@@ -4605,7 +4606,7 @@ const ImportPointage = ({agents, user, onImported}) => {
       const XLSX = window.XLSX;
       if (!XLSX) { showToast("Librairie XLSX non chargée", "error"); setImporting(false); return; }
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, {type:'array', cellDates: true, cellNF: false});
+      const wb = XLSX.read(buf, {type:'array', cellDates: false, raw: true});
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
       
