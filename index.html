@@ -8,6 +8,7 @@
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #F1F5F9; -webkit-font-smoothing: antialiased; }
     input, select, button, textarea { font-family: inherit; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes slideDown { from { opacity:0; transform:translateX(-50%) translateY(-12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
     input, select, textarea { font-size: 16px; }
     @media (min-width: 768px) { input, select, textarea { font-size: inherit; } }
@@ -351,6 +352,16 @@ const heuresParShiftType = shift => {
 const shiftsParJour = mode => mode === "8h" ? 3 : mode === "12h" ? 2 : 1;
 
 // ─── TOAST NOTIFICATION ──────────────────────────────────────
+
+const LoadingOverlay = ({message, subMessage}) => React.createElement('div', {
+  style:{position:'fixed',inset:0,background:'rgba(15,23,42,0.85)',zIndex:9999,
+    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16}},
+  React.createElement('div', {style:{width:48,height:48,border:'4px solid #334155',
+    borderTop:'4px solid #D5A563',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}),
+  React.createElement('div', {style:{color:'#fff',fontSize:16,fontWeight:700,textAlign:'center'}}, message),
+  subMessage && React.createElement('div', {style:{color:'#94A3B8',fontSize:13,textAlign:'center',maxWidth:320}}, subMessage)
+);
+
 const Toast = ({
   message,
   type = "success",
@@ -4418,6 +4429,7 @@ const BulletinsAdmin = ({agents, bulletins, setBulletins, user}) => {
   const agentName = id => { const a = agents.find(x=>x.id===id); return a ? `${a.nom} ${a.prenom}` : id; };
 
   return React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:12}},
+    importing && loadingMsg && React.createElement(LoadingOverlay, {message: loadingMsg, subMessage: 'Merci de ne pas quitter la page'}),
     toast && React.createElement(Toast, {message:toast.message, type:toast.type}),
     React.createElement('h2', {style:{margin:0,fontSize:16,fontWeight:700,color:'#1E293B'}}, 'Bulletins de Paie'),
 
@@ -4531,6 +4543,7 @@ const MonBulletin = ({bulletins, user, agent}) => {
 const ImportPointage = ({agents, user, onImported}) => {
   const {toast, showToast} = useToast();
   const [importing, setImporting] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('');
   const [preview, setPreview] = useState(null);
   const [errors, setErrors] = useState([]);
 
@@ -4601,6 +4614,7 @@ const ImportPointage = ({agents, user, onImported}) => {
     const file = e.target.files[0];
     if (!file) return;
     setImporting(true);
+    setLoadingMsg('Lecture du fichier Excel...');
     setErrors([]);
     try {
       const XLSX = window.XLSX;
@@ -4693,6 +4707,7 @@ const ImportPointage = ({agents, user, onImported}) => {
   const handleImport = async () => {
     if (!preview?.length) return;
     setImporting(true);
+    setLoadingMsg(`Import de ${preview.length} lignes en cours...`);
     const r = await api("pointage.import", {rows: preview}, user.token);
     setImporting(false);
     if (r.ok) {
@@ -4714,6 +4729,7 @@ const ImportPointage = ({agents, user, onImported}) => {
   const moisGroups = preview ? [...new Set(preview.map(r=>r.mois))].sort() : [];
 
   return React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:12}},
+    importing && loadingMsg && React.createElement(LoadingOverlay, {message: loadingMsg, subMessage: 'Merci de ne pas quitter la page'}),
     toast && React.createElement(Toast, {message:toast.message, type:toast.type}),
     
     // Zone import
@@ -4790,6 +4806,9 @@ const GestionPointage = ({agents, pointage, setPointage, user}) => {
   })();
   const [moisFilter, setMoisFilter] = useState(defaultMois);
   const [publishing, setPublishing] = useState(false);
+  const [loadingMsgGP, setLoadingMsgGP] = useState('');
+  const [contestSelected, setContestSelected] = useState(null); // agentId en cours de correction
+  const [correctionRows, setCorrectionRows] = useState({});
   // Mettre à jour moisFilter si les données changent et le mois actuel n'existe pas
   useEffect(() => {
     const mois = [...new Set((pointage||[]).map(p=>p.mois).filter(Boolean))].sort().reverse();
@@ -4804,12 +4823,53 @@ const GestionPointage = ({agents, pointage, setPointage, user}) => {
     if (r.ok) setPointage(r.data || []);
   };
 
+  const handleCorrection = async (agentId, agRows) => {
+    // Soumettre les corrections et republier
+    setPublishing(true);
+    setLoadingMsgGP('Correction et republication en cours...');
+    const corrected = agRows.map(r => ({
+      ...r,
+      heuresTravaillees: correctionRows[r.date] !== undefined ? correctionRows[r.date] : r.heuresTravaillees,
+    }));
+    const r = await api("pointage.import", {rows: corrected.map(r => ({
+      agentId: r.agentId, nom: r.nom, prenom: r.prenom,
+      date: r.date,
+      heureEntree: r.heureEntree,
+      heureSortie: r.heureSortie,
+      pause: r.pause,
+    }))}, user.token);
+    if (r.ok) {
+      await api("pointage.publier", {mois: moisFilter, agentIds: [agentId]}, user.token);
+      showToast("Corrections publiées — l'agent peut re-signer");
+      setContestSelected(null);
+      setCorrectionRows({});
+      await refreshPointage();
+    } else {
+      showToast("Erreur: " + (r.error || "Échec"), "error");
+    }
+    setPublishing(false);
+    setLoadingMsgGP('');
+  };
+
+  const handleRejeterContestation = async (agentId) => {
+    setPublishing(true);
+    setLoadingMsgGP('Rejet de la contestation...');
+    await api("pointage.publier", {mois: moisFilter, agentIds: [agentId]}, user.token);
+    showToast("Contestation rejetée — fiche maintenue");
+    setContestSelected(null);
+    setPublishing(false);
+    setLoadingMsgGP('');
+    await refreshPointage();
+  };
+
   const handlePublier = async () => {
     const toPub = pointage.filter(p => p.mois === moisFilter && p.publie !== "TRUE" && p.publie !== true);
     if (!toPub.length) { showToast("Tout est déjà publié","error"); return; }
     setPublishing(true);
+    setLoadingMsgGP('Publication en cours...');
     const r = await api("pointage.publier", {mois: moisFilter}, user.token);
     setPublishing(false);
+    setLoadingMsgGP('');
     if (r.ok) {
       showToast(`${r.published} fiches publiées aux agents`);
       await refreshPointage();
@@ -4830,6 +4890,7 @@ const GestionPointage = ({agents, pointage, setPointage, user}) => {
   const moisOptions = availableMois;
 
   return React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:12}},
+    publishing && loadingMsgGP && React.createElement(LoadingOverlay, {message: loadingMsgGP, subMessage: 'Merci de ne pas quitter la page'}),
     toast && React.createElement(Toast, {message:toast.message, type:toast.type}),
     
     // Header
@@ -4900,8 +4961,70 @@ const GestionPointage = ({agents, pointage, setPointage, user}) => {
                 ),
                 React.createElement('span', {style:{fontWeight:700,color:'#1D2C41'}}), `Total: ${totalStr}`
               ),
-              mainStatut === 'CONTESTE' && React.createElement('div', {style:{padding:'8px 16px',background:'#FFFBEB',borderBottom:'1px solid #FDE68A',fontSize:12,color:'#92400E'}},
-                `⚠ Motif: ${ag.rows.find(r=>r.statut==='CONTESTE')?.motifContestation || ''}`
+              mainStatut === 'CONTESTE' && React.createElement('div', {style:{padding:'8px 16px',background:'#FFFBEB',borderBottom:'1px solid #FDE68A'}},
+                React.createElement('div', {style:{fontSize:12,color:'#92400E',marginBottom:6}},
+                  `⚠ Motif: ${ag.rows.find(r=>r.statut==='CONTESTE')?.motifContestation || ''}`
+                ),
+                contestSelected === agId
+                  ? React.createElement('div', {style:{marginTop:8}},
+                      React.createElement('div', {style:{fontSize:11,fontWeight:700,color:'#92400E',marginBottom:6}},
+                        'Modifier les heures travaillées si nécessaire :'
+                      ),
+                      React.createElement('div', {style:{overflowX:'auto'}},
+                        React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
+                          React.createElement('thead', null,
+                            React.createElement('tr', {style:{background:'#FEF3C7'}},
+                              ['Date','H. Entrée','H. Sortie','Pause','H.T actuel','H.T corrigé'].map(h =>
+                                React.createElement('th', {key:h, style:{padding:'6px 10px',textAlign:'center',fontWeight:600}}, h)
+                              )
+                            )
+                          ),
+                          React.createElement('tbody', null,
+                            ag.rows.map(r =>
+                              React.createElement('tr', {key:r.date, style:{borderBottom:'1px solid #FDE68A'}},
+                                React.createElement('td', {style:{padding:'5px 10px',textAlign:'center'}}, r.date),
+                                React.createElement('td', {style:{padding:'5px 10px',textAlign:'center'}}, r.heureEntree ? String(r.heureEntree).trim().slice(-5) : ''),
+                                React.createElement('td', {style:{padding:'5px 10px',textAlign:'center'}}, r.heureSortie ? String(r.heureSortie).trim().slice(-5) : ''),
+                                React.createElement('td', {style:{padding:'5px 10px',textAlign:'center'}}, r.pause ? String(r.pause).trim() : ''),
+                                React.createElement('td', {style:{padding:'5px 10px',textAlign:'center',fontWeight:700}}, r.heuresTravaillees || ''),
+                                React.createElement('td', {style:{padding:'5px 4px',textAlign:'center'}},
+                                  React.createElement('input', {
+                                    type:'text', placeholder: r.heuresTravaillees || '08:00',
+                                    value: correctionRows[r.date] !== undefined ? correctionRows[r.date] : '',
+                                    onChange: e => setCorrectionRows(prev => ({...prev, [r.date]: e.target.value})),
+                                    style:{width:70,padding:'3px 6px',border:'1px solid #F59E0B',borderRadius:4,fontSize:12,textAlign:'center'}
+                                  })
+                                )
+                              )
+                            )
+                          )
+                        )
+                      ),
+                      React.createElement('div', {style:{display:'flex',gap:8,marginTop:10,justifyContent:'flex-end'}},
+                        React.createElement('button', {onClick:()=>{setContestSelected(null);setCorrectionRows({});},
+                          style:{padding:'6px 14px',background:'#F1F5F9',border:'none',borderRadius:6,cursor:'pointer',fontSize:12}},
+                          'Annuler'
+                        ),
+                        React.createElement('button', {onClick:()=>handleRejeterContestation(agId),
+                          style:{padding:'6px 14px',background:'#94A3B8',color:'#fff',border:'none',borderRadius:8,fontWeight:600,fontSize:12,cursor:'pointer'}},
+                          'Rejeter la contestation'
+                        ),
+                        React.createElement('button', {onClick:()=>handleCorrection(agId, ag.rows),
+                          style:{padding:'6px 16px',background:'#22C55E',color:'#fff',border:'none',borderRadius:8,fontWeight:700,fontSize:12,cursor:'pointer'}},
+                          '✓ Corriger et republier'
+                        )
+                      )
+                    )
+                  : React.createElement('div', {style:{display:'flex',gap:8,marginTop:6}},
+                      React.createElement('button', {onClick:()=>setContestSelected(agId),
+                        style:{padding:'6px 14px',background:'#F59E0B',color:'#fff',border:'none',borderRadius:6,fontWeight:600,fontSize:12,cursor:'pointer'}},
+                        '✏ Traiter la contestation'
+                      ),
+                      React.createElement('button', {onClick:()=>handleRejeterContestation(agId),
+                        style:{padding:'6px 14px',background:'#94A3B8',color:'#fff',border:'none',borderRadius:6,fontWeight:600,fontSize:12,cursor:'pointer'}},
+                        'Rejeter'
+                      )
+                    )
               )
             );
           })
@@ -5609,6 +5732,6 @@ function App() {
 
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
- </script>
+</script>
 </body>
 </html>
