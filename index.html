@@ -4581,7 +4581,7 @@ const ImportPointage = ({agents, user, onImported}) => {
   };
 
   const parseDuration = (val) => {
-    if (!val) return "00:30"; // défaut 30 min si vide
+    if (!val) return "00:00"; // pas de pause par défaut
     if (typeof val === 'number') {
       // Fraction de jour Excel ou numéro série avec heure
       // Si val > 1, c'est un datetime: extraire seulement la partie décimale
