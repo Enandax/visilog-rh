@@ -4800,7 +4800,7 @@ const GestionPointage = ({agents, pointage, setPointage, user}) => {
   const MOIS_LABELS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
   const refreshPointage = async () => {
-    const r = await api("pointage.get", {mois: moisFilter}, user.token);
+    const r = await api("pointage.get", {}, user.token);
     if (r.ok) setPointage(r.data || []);
   };
 
@@ -4912,10 +4912,16 @@ const GestionPointage = ({agents, pointage, setPointage, user}) => {
 // ─── MODULE : MA FICHE DE PRÉSENCE (Agent) ───────────────────
 const MaFichePointage = ({pointage, user}) => {
   const {toast, showToast} = useToast();
-  const [moisFilter, setMoisFilter] = useState(() => {
+  const availableMoisAgent = [...new Set((pointage||[]).map(p=>p.mois).filter(Boolean))].sort().reverse();
+  const defaultMoisAgent = availableMoisAgent.length > 0 ? availableMoisAgent[0] : (() => {
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
-  });
+  })();
+  const [moisFilter, setMoisFilter] = useState(defaultMoisAgent);
+  useEffect(() => {
+    const mois = [...new Set((pointage||[]).map(p=>p.mois).filter(Boolean))].sort().reverse();
+    if (mois.length > 0 && !mois.includes(moisFilter)) setMoisFilter(mois[0]);
+  }, [pointage]);
   const [showContest, setShowContest] = useState(false);
   const [motif, setMotif] = useState('');
   const [signing, setSigning] = useState(false);
@@ -4963,7 +4969,7 @@ const MaFichePointage = ({pointage, user}) => {
     if (r.ok) { showToast("Contestation envoyée à la direction"); setShowContest(false); setMotif(''); }
   };
 
-  const moisOptions = [...new Set(pointage.map(p=>p.mois))].sort().reverse();
+  const moisOptions = availableMoisAgent;
   const [moisY, moisM] = moisFilter.split('-');
   const moisLabel = `${MOIS_LABELS[parseInt(moisM)-1]} ${moisY}`;
 
