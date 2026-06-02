@@ -4783,11 +4783,20 @@ const ImportPointage = ({agents, user, onImported}) => {
 const GestionPointage = ({agents, pointage, setPointage, user}) => {
   const {toast, showToast} = useToast();
   const [tab, setTab] = useState('import');
-  const [moisFilter, setMoisFilter] = useState(() => {
+  const availableMois = [...new Set((pointage||[]).map(p=>p.mois).filter(Boolean))].sort().reverse();
+  const defaultMois = availableMois.length > 0 ? availableMois[0] : (() => {
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
-  });
+  })();
+  const [moisFilter, setMoisFilter] = useState(defaultMois);
   const [publishing, setPublishing] = useState(false);
+  // Mettre à jour moisFilter si les données changent et le mois actuel n'existe pas
+  useEffect(() => {
+    const mois = [...new Set((pointage||[]).map(p=>p.mois).filter(Boolean))].sort().reverse();
+    if (mois.length > 0 && !mois.includes(moisFilter)) {
+      setMoisFilter(mois[0]);
+    }
+  }, [pointage]);
   const MOIS_LABELS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
   const refreshPointage = async () => {
@@ -4818,7 +4827,7 @@ const GestionPointage = ({agents, pointage, setPointage, user}) => {
   const STATUT_LABEL = {EN_ATTENTE:'En attente', PUBLIE:'Publié', SIGNE:'Signé ✓', CONTESTE:'Contesté ⚠'};
   const nbContestes = Object.values(byAgent).filter(a => a.statuts.has('CONTESTE')).length;
 
-  const moisOptions = [...new Set(pointage.map(p=>p.mois))].sort().reverse();
+  const moisOptions = availableMois;
 
   return React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:12}},
     toast && React.createElement(Toast, {message:toast.message, type:toast.type}),
