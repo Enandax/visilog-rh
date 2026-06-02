@@ -4538,8 +4538,11 @@ const ImportPointage = ({agents, user, onImported}) => {
 
   const parseExcelDate = (val) => {
     if (!val) return "";
+    if (val instanceof Date) {
+      // cellDates:true → XLSX.js crée les dates en UTC → lire UTC
+      return val.getUTCFullYear() + '-' + String(val.getUTCMonth()+1).padStart(2,'0') + '-' + String(val.getUTCDate()).padStart(2,'0');
+    }
     if (typeof val === 'number') {
-      // Utiliser UTC pour éviter le décalage de fuseau horaire
       const d = new Date(Math.round((val - 25569) * 86400) * 1000);
       return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
     }
@@ -4554,13 +4557,19 @@ const ImportPointage = ({agents, user, onImported}) => {
 
   const parseExcelDatetime = (val) => {
     if (!val) return "";
+    if (val instanceof Date) {
+      // cellDates:true → XLSX.js crée les dates en UTC → lire composantes UTC
+      const yyyy = val.getUTCFullYear();
+      const mm = String(val.getUTCMonth()+1).padStart(2,'0');
+      const dd = String(val.getUTCDate()).padStart(2,'0');
+      const hh = String(val.getUTCHours()).padStart(2,'0');
+      const mi = String(val.getUTCMinutes()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
     if (typeof val === 'number') {
-      // Excel stocke les dates comme nombre de jours depuis 1900-01-01
-      // Correction: utiliser les composantes locales pour éviter le décalage UTC
-      const totalDays = val - 25569; // jours depuis epoch Unix (1970-01-01)
-      const totalSecs = Math.round(totalDays * 86400);
+      // Fallback si cellDates:false: composantes UTC
+      const totalSecs = Math.round((val - 25569) * 86400);
       const d = new Date(totalSecs * 1000);
-      // Utiliser les valeurs UTC pour éviter le décalage fuseau horaire
       const yyyy = d.getUTCFullYear();
       const mm = String(d.getUTCMonth()+1).padStart(2,'0');
       const dd = String(d.getUTCDate()).padStart(2,'0');
@@ -4596,7 +4605,7 @@ const ImportPointage = ({agents, user, onImported}) => {
       const XLSX = window.XLSX;
       if (!XLSX) { showToast("Librairie XLSX non chargée", "error"); setImporting(false); return; }
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, {type:'array', cellDates: false, cellNF: false, raw: false});
+      const wb = XLSX.read(buf, {type:'array', cellDates: true, cellNF: false});
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
       
