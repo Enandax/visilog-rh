@@ -5242,80 +5242,125 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
   });
 
   // ── Shifts ──
-  const [localShifts, setLocalShifts] = useState(() =>
-    (configShifts||SHIFTS).map(s => ({
+  const [localShifts, setLocalShifts] = useState(() => {
+    const raw = window.__visilogConfig?.shifts;
+    if (raw && raw.length > 0) {
+      return raw.map(s => ({
+        valeur: s.valeur,
+        couleur: s.couleur || '#334155',
+        heureDebut: s.extra1 || '',
+        heureFin: s.extra2 || '',
+        chevauchement: s.extra3 === 'TRUE',
+        duree: parseInt(s.extra4) || 8,
+        actif: s.actif !== false,
+      }));
+    }
+    return (configShifts||SHIFTS).map(s => ({
       valeur: s,
       couleur: (configColors||SHIFT_COLORS)[s] || '#334155',
-      heureDebut: '',
-      heureFin: '',
-      chevauchement: false,
-      duree: 8,
-      actif: true,
-    }))
-  );
+      heureDebut: '', heureFin: '', chevauchement: false, duree: 8, actif: true,
+    }));
+  });
   const [newShift, setNewShift] = useState({valeur:'',couleur:'#334155',heureDebut:'',heureFin:'',chevauchement:false,duree:8});
 
   // ── Projets ──
-  const [localProjets, setLocalProjets] = useState(() =>
-    (configProjets||PROJETS).map(p => ({valeur:p, actif:true}))
-  );
+  const [localProjets, setLocalProjets] = useState(() => {
+    const raw = window.__visilogConfig?.projets;
+    if (raw && raw.length > 0) return raw.map(p => ({valeur:p.valeur, actif:p.actif!==false}));
+    return (configProjets||PROJETS).map(p => ({valeur:p, actif:true}));
+  });
   const [newProjet, setNewProjet] = useState('');
 
   // ── Rôles ──
-  const [localRoles, setLocalRoles] = useState(() =>
-    (configRoles||ROLES_LIST).map(r => ({valeur:r, actif:true}))
-  );
+  const [localRoles, setLocalRoles] = useState(() => {
+    const raw = window.__visilogConfig?.roles;
+    if (raw && raw.length > 0) return raw.map(r => ({valeur:r.valeur, actif:r.actif!==false}));
+    return (configRoles||ROLES_LIST).map(r => ({valeur:r, actif:true}));
+  });
   const [newRole, setNewRole] = useState('');
 
   // ── Types incidents ──
-  const [localIncidents, setLocalIncidents] = useState([
-    {valeur:"Agent non présenté",actif:true},
-    {valeur:"Réclamation client",actif:true},
-    {valeur:"Retard",actif:true},
-    {valeur:"Accident de travail",actif:true},
-    {valeur:"Incident sécurité",actif:true},
-    {valeur:"Autre",actif:true},
-  ]);
+  const [localIncidents, setLocalIncidents] = useState(() => {
+    const raw = window.__visilogConfig?.typesIncidents;
+    if (raw && raw.length > 0) return raw.map(t => ({valeur:t.valeur, actif:t.actif!==false}));
+    return [
+      {valeur:"Agent non présenté",actif:true},{valeur:"Réclamation client",actif:true},
+      {valeur:"Retard",actif:true},{valeur:"Accident de travail",actif:true},
+      {valeur:"Incident sécurité",actif:true},{valeur:"Autre",actif:true},
+    ];
+  });
   const [newIncident, setNewIncident] = useState('');
 
   // ── Types congés ──
-  const [localConges, setLocalConges] = useState([
-    {valeur:"CONGE",actif:true},
-    {valeur:"REPOS",actif:true},
-    {valeur:"FORMATION",actif:true},
-    {valeur:"MISSION",actif:true},
-    {valeur:"ARRET MALADIE",actif:true},
-  ]);
+  const [localConges, setLocalConges] = useState(() => {
+    const raw = window.__visilogConfig?.typesConges;
+    if (raw && raw.length > 0) return raw.map(t => ({valeur:t.valeur, actif:t.actif!==false}));
+    return [
+      {valeur:"CONGE",actif:true},{valeur:"REPOS",actif:true},{valeur:"FORMATION",actif:true},
+      {valeur:"MISSION",actif:true},{valeur:"ARRET MALADIE",actif:true},
+    ];
+  });
   const [newConge, setNewConge] = useState('');
 
   // ── Projets détaillés (Phase 1B) ──
-  const [localProjetsDetail, setLocalProjetsDetail] = useState([
-    {id:'p1', nom:'COSUMAR PFO',     client:'COSUMAR',   responsable:'',  statut:'ACTIF'},
-    {id:'p2', nom:'STEP-UP',         client:'STEP-UP',   responsable:'',  statut:'ACTIF'},
-    {id:'p3', nom:'COSTOMA',         client:'COSTOMA',   responsable:'',  statut:'ACTIF'},
-    {id:'p4', nom:'FOODIPEX',        client:'FOODIPEX',  responsable:'',  statut:'ACTIF'},
-    {id:'p5', nom:'MARJANE SAPINO',  client:'MARJANE',   responsable:'',  statut:'ACTIF'},
-    {id:'p6', nom:'CELLULE SIEGE',   client:'EGBS',      responsable:'',  statut:'ACTIF'},
-    {id:'p7', nom:'DIGIBAY',         client:'DIGIBAY',   responsable:'',  statut:'ACTIF'},
-  ]);
+  const [localProjetsDetail, setLocalProjetsDetail] = useState(() => {
+    const raw = window.__visilogConfig?.projetsDetail;
+    if (raw && raw.length > 0) {
+      return raw.map(p => ({
+        id: p.id || ('p_'+p.valeur),
+        nom: p.valeur,
+        client: p.extra1 || p.valeur,
+        responsable: p.extra2 || '',
+        statut: p.extra3 || 'ACTIF',
+      }));
+    }
+    return [
+      {id:'p1', nom:'COSUMAR PFO',    client:'COSUMAR',  responsable:'', statut:'ACTIF'},
+      {id:'p2', nom:'STEP-UP',        client:'STEP-UP',  responsable:'', statut:'ACTIF'},
+      {id:'p3', nom:'COSTOMA',        client:'COSTOMA',  responsable:'', statut:'ACTIF'},
+      {id:'p4', nom:'FOODIPEX',       client:'FOODIPEX', responsable:'', statut:'ACTIF'},
+      {id:'p5', nom:'MARJANE SAPINO', client:'MARJANE',  responsable:'', statut:'ACTIF'},
+      {id:'p6', nom:'CELLULE SIEGE',  client:'EGBS',     responsable:'', statut:'ACTIF'},
+      {id:'p7', nom:'DIGIBAY',        client:'DIGIBAY',  responsable:'', statut:'ACTIF'},
+    ];
+  });
   const [editProjetId, setEditProjetId] = useState(null);
   const [newProjetDetail, setNewProjetDetail] = useState({nom:'',client:'',responsable:'',statut:'ACTIF'});
 
   // ── Postes (Phase 1B) ──
-  const [localPostes, setLocalPostes] = useState([
-    {id:'po1',  nom:'PFM',              projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
-    {id:'po2',  nom:'PFC',              projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
-    {id:'po3',  nom:'50KG',             projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, actif:true},
-    {id:'po4',  nom:'Planificateur',    projetId:'p1', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
-    {id:'po5',  nom:'Superviseur PFO',  projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
-    {id:'po6',  nom:'Chargement',       projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, actif:true},
-    {id:'po7',  nom:'Douane',           projetId:'p2', heureOuv:'08:00', heureFerm:'17:00', navire:true,  agentsRequis:1, actif:true},
-    {id:'po8',  nom:'Raffinerie',       projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, actif:true},
-    {id:'po9',  nom:'Agent COSTOMA',    projetId:'p3', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
-    {id:'po10', nom:'Agent FOODIPEX',   projetId:'p4', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
-    {id:'po11', nom:'Quai Marjane',     projetId:'p5', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, actif:true},
-    {id:'po12', nom:'Kiosque Marjane',  projetId:'p5', heureOuv:'08:00', heureFerm:'20:00', navire:false, agentsRequis:1, actif:true},
-  ]);
+  const [localPostes, setLocalPostes] = useState(() => {
+    const raw = window.__visilogConfig?.postes;
+    if (raw && raw.length > 0) {
+      return raw.map(p => {
+        let navire = false, agentsRequis = 1;
+        try { const ex = JSON.parse(p.extra4||'{}'); navire=!!ex.navire; agentsRequis=parseInt(ex.agentsRequis)||1; } catch(e) {}
+        return {
+          id: p.id,
+          nom: p.valeur,
+          projetId: p.extra1 || '',
+          heureOuv: p.extra2 || '06:00',
+          heureFerm: p.extra3 || '22:00',
+          navire,
+          agentsRequis,
+          actif: p.actif !== false,
+        };
+      });
+    }
+    return [
+      {id:'po1',  nom:'PFM',             projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
+      {id:'po2',  nom:'PFC',             projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
+      {id:'po3',  nom:'50KG',            projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, actif:true},
+      {id:'po4',  nom:'Planificateur',   projetId:'p1', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
+      {id:'po5',  nom:'Superviseur PFO', projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
+      {id:'po6',  nom:'Chargement',      projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, actif:true},
+      {id:'po7',  nom:'Douane',          projetId:'p2', heureOuv:'08:00', heureFerm:'17:00', navire:true,  agentsRequis:1, actif:true},
+      {id:'po8',  nom:'Raffinerie',      projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, actif:true},
+      {id:'po9',  nom:'Agent COSTOMA',   projetId:'p3', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
+      {id:'po10', nom:'Agent FOODIPEX',  projetId:'p4', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
+      {id:'po11', nom:'Quai Marjane',    projetId:'p5', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, actif:true},
+      {id:'po12', nom:'Kiosque Marjane', projetId:'p5', heureOuv:'08:00', heureFerm:'20:00', navire:false, agentsRequis:1, actif:true},
+    ];
+  });
   const [filterPosteProjet, setFilterPosteProjet] = useState('');
   const [editPosteId, setEditPosteId] = useState(null);
   const [newPoste, setNewPoste] = useState({nom:'',projetId:'',heureOuv:'06:00',heureFerm:'22:00',navire:false,agentsRequis:1,actif:true});
@@ -5335,30 +5380,46 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
     {id:'bulletin',      label:'Bulletins de Paie'},
     {id:'configuration', label:'Configuration'},
   ];
-  const [rolesAcces, setRolesAcces] = useState([
-    {
-      role: 'direction', label: 'Direction', fixe: true,
-      acces: {kpis:2,planning:2,navires:2,agents:2,conges:2,paie:2,refus:2,realisation:2,incidents:2,pointage:2,bulletin:2,configuration:2}
-    },
-    {
-      role: 'cellule', label: 'Superviseur / Cellule', fixe: true,
-      acces: {kpis:1,planning:2,navires:2,agents:0,conges:2,paie:0,refus:0,realisation:2,incidents:0,pointage:0,bulletin:0,configuration:0}
-    },
-    {
-      role: 'agent', label: 'Agent', fixe: true,
-      acces: {kpis:0,planning:1,navires:0,agents:0,conges:2,paie:0,refus:0,realisation:0,incidents:0,pointage:0,bulletin:1,configuration:0}
-    },
-  ]);
+  const [rolesAcces, setRolesAcces] = useState(() => {
+    const raw = window.__visilogConfig?.rolesAcces;
+    if (raw && raw.length > 0) {
+      return raw.map(r => {
+        let acces = {};
+        try { acces = JSON.parse(r.valeur||'{}'); } catch(e) {}
+        return { role:r.nom, label:r.extra1||r.nom, fixe:r.extra2==='TRUE', acces };
+      });
+    }
+    return [
+      {role:'direction',label:'Direction',fixe:true,
+       acces:{kpis:2,planning:2,navires:2,agents:2,conges:2,paie:2,refus:2,realisation:2,incidents:2,pointage:2,bulletin:2,configuration:2}},
+      {role:'cellule',label:'Superviseur / Cellule',fixe:true,
+       acces:{kpis:1,planning:2,navires:2,agents:0,conges:2,paie:0,refus:0,realisation:2,incidents:0,pointage:0,bulletin:0,configuration:0}},
+      {role:'agent',label:'Agent',fixe:true,
+       acces:{kpis:0,planning:1,navires:0,agents:0,conges:2,paie:0,refus:0,realisation:0,incidents:0,pointage:0,bulletin:1,configuration:0}},
+    ];
+  });
   // 0=aucun, 1=lecture, 2=lecture+écriture
 
   // ── Paliers polyvalence ──
-  const [paliers, setPaliers] = useState([
-    {niveau:'A', scoreMin:40, scoreMax:999, salaireMin:5000, salaireMax:9999},
-    {niveau:'B', scoreMin:25, scoreMax:39,  salaireMin:3700, salaireMax:4999},
-    {niveau:'C', scoreMin:16, scoreMax:24,  salaireMin:3423, salaireMax:3699},
-    {niveau:'D', scoreMin:5,  scoreMax:15,  salaireMin:3352, salaireMax:3422},
-    {niveau:'E', scoreMin:0,  scoreMax:4,   salaireMin:0,    salaireMax:3351},
-  ]);
+  const [paliers, setPaliers] = useState(() => {
+    const raw = window.__visilogConfig?.paliers;
+    if (raw && raw.length > 0) {
+      return raw.map(p => ({
+        niveau: p.valeur,
+        scoreMin: parseInt(p.extra1)||0,
+        scoreMax: parseInt(p.extra2)||999,
+        salaireMin: parseInt(p.extra3)||0,
+        salaireMax: parseInt(p.extra4)||9999,
+      }));
+    }
+    return [
+      {niveau:'A', scoreMin:40, scoreMax:999, salaireMin:5000, salaireMax:9999},
+      {niveau:'B', scoreMin:25, scoreMax:39,  salaireMin:3700, salaireMax:4999},
+      {niveau:'C', scoreMin:16, scoreMax:24,  salaireMin:3423, salaireMax:3699},
+      {niveau:'D', scoreMin:5,  scoreMax:15,  salaireMin:3352, salaireMax:3422},
+      {niveau:'E', scoreMin:0,  scoreMax:4,   salaireMin:0,    salaireMax:3351},
+    ];
+  });
 
   const TABS = [
     {id:'parametres',   label:'⚙️ Paramètres',    icon:'⚙️'},
@@ -6191,20 +6252,25 @@ function App() {
       }
       // Charger config dynamique depuis BDD
       if (cfg.ok && cfg.data) {
-        const shifts = cfg.data.shifts?.filter(s => s.actif).map(s => s.valeur) || SHIFTS;
-        const projets = cfg.data.projets?.filter(p => p.actif).map(p => p.valeur) || PROJETS;
-        const roles = cfg.data.roles?.filter(r => r.actif).map(r => r.valeur) || ROLES_LIST;
+        const d = cfg.data;
+
+        // ── Shifts ──
+        const shifts = d.shifts?.filter(s => s.actif).map(s => s.valeur) || SHIFTS;
         const colors = {};
-        cfg.data.shifts?.forEach(s => {
-          colors[s.valeur] = s.couleur || "#334155";
-        });
+        d.shifts?.forEach(s => { colors[s.valeur] = s.couleur || "#334155"; });
         setConfigShifts(shifts);
+        if (Object.keys(colors).length) setConfigColors({...SHIFT_COLORS, ...colors});
+
+        // ── Projets ──
+        const projets = d.projets?.filter(p => p.actif).map(p => p.valeur) || PROJETS;
         setConfigProjets(projets);
+
+        // ── Rôles ──
+        const roles = d.roles?.filter(r => r.actif).map(r => r.valeur) || ROLES_LIST;
         setConfigRoles(roles);
-        if (Object.keys(colors).length) setConfigColors({
-          ...SHIFT_COLORS,
-          ...colors
-        });
+
+        // ── Exposer la config brute pour le module Configuration ──
+        window.__visilogConfig = d;
       }
     } else {
       // Compatibilité ancien mode local
