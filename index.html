@@ -5288,6 +5288,69 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
   ]);
   const [newConge, setNewConge] = useState('');
 
+  // ── Projets détaillés (Phase 1B) ──
+  const [localProjetsDetail, setLocalProjetsDetail] = useState([
+    {id:'p1', nom:'COSUMAR PFO',     client:'COSUMAR',   responsable:'',  statut:'ACTIF'},
+    {id:'p2', nom:'STEP-UP',         client:'STEP-UP',   responsable:'',  statut:'ACTIF'},
+    {id:'p3', nom:'COSTOMA',         client:'COSTOMA',   responsable:'',  statut:'ACTIF'},
+    {id:'p4', nom:'FOODIPEX',        client:'FOODIPEX',  responsable:'',  statut:'ACTIF'},
+    {id:'p5', nom:'MARJANE SAPINO',  client:'MARJANE',   responsable:'',  statut:'ACTIF'},
+    {id:'p6', nom:'CELLULE SIEGE',   client:'EGBS',      responsable:'',  statut:'ACTIF'},
+    {id:'p7', nom:'DIGIBAY',         client:'DIGIBAY',   responsable:'',  statut:'ACTIF'},
+  ]);
+  const [editProjetId, setEditProjetId] = useState(null);
+  const [newProjetDetail, setNewProjetDetail] = useState({nom:'',client:'',responsable:'',statut:'ACTIF'});
+
+  // ── Postes (Phase 1B) ──
+  const [localPostes, setLocalPostes] = useState([
+    {id:'po1',  nom:'PFM',              projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
+    {id:'po2',  nom:'PFC',              projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
+    {id:'po3',  nom:'50KG',             projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, actif:true},
+    {id:'po4',  nom:'Planificateur',    projetId:'p1', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
+    {id:'po5',  nom:'Superviseur PFO',  projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
+    {id:'po6',  nom:'Chargement',       projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, actif:true},
+    {id:'po7',  nom:'Douane',           projetId:'p2', heureOuv:'08:00', heureFerm:'17:00', navire:true,  agentsRequis:1, actif:true},
+    {id:'po8',  nom:'Raffinerie',       projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, actif:true},
+    {id:'po9',  nom:'Agent COSTOMA',    projetId:'p3', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
+    {id:'po10', nom:'Agent FOODIPEX',   projetId:'p4', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
+    {id:'po11', nom:'Quai Marjane',     projetId:'p5', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, actif:true},
+    {id:'po12', nom:'Kiosque Marjane',  projetId:'p5', heureOuv:'08:00', heureFerm:'20:00', navire:false, agentsRequis:1, actif:true},
+  ]);
+  const [filterPosteProjet, setFilterPosteProjet] = useState('');
+  const [editPosteId, setEditPosteId] = useState(null);
+  const [newPoste, setNewPoste] = useState({nom:'',projetId:'',heureOuv:'06:00',heureFerm:'22:00',navire:false,agentsRequis:1,actif:true});
+
+  // ── Rôles & Accès (Phase 1B) ──
+  const MODULES_LIST = [
+    {id:'kpis',          label:'Tableau de bord'},
+    {id:'planning',      label:'Planning'},
+    {id:'navires',       label:'Navires'},
+    {id:'agents',        label:'Agents'},
+    {id:'conges',        label:'Congés & Repos'},
+    {id:'paie',          label:'Heures & Paie'},
+    {id:'refus',         label:'Gestion des refus'},
+    {id:'realisation',   label:'Réalisation'},
+    {id:'incidents',     label:'Incidents'},
+    {id:'pointage',      label:'Pointage'},
+    {id:'bulletin',      label:'Bulletins de Paie'},
+    {id:'configuration', label:'Configuration'},
+  ];
+  const [rolesAcces, setRolesAcces] = useState([
+    {
+      role: 'direction', label: 'Direction', fixe: true,
+      acces: {kpis:2,planning:2,navires:2,agents:2,conges:2,paie:2,refus:2,realisation:2,incidents:2,pointage:2,bulletin:2,configuration:2}
+    },
+    {
+      role: 'cellule', label: 'Superviseur / Cellule', fixe: true,
+      acces: {kpis:1,planning:2,navires:2,agents:0,conges:2,paie:0,refus:0,realisation:2,incidents:0,pointage:0,bulletin:0,configuration:0}
+    },
+    {
+      role: 'agent', label: 'Agent', fixe: true,
+      acces: {kpis:0,planning:1,navires:0,agents:0,conges:2,paie:0,refus:0,realisation:0,incidents:0,pointage:0,bulletin:1,configuration:0}
+    },
+  ]);
+  // 0=aucun, 1=lecture, 2=lecture+écriture
+
   // ── Paliers polyvalence ──
   const [paliers, setPaliers] = useState([
     {niveau:'A', scoreMin:40, scoreMax:999, salaireMin:5000, salaireMax:9999},
@@ -5298,12 +5361,14 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
   ]);
 
   const TABS = [
-    {id:'parametres', label:'⚙️ Paramètres', icon:'⚙️'},
-    {id:'shifts',     label:'🕐 Shifts',     icon:'🕐'},
-    {id:'projets',    label:'🏢 Projets',    icon:'🏢'},
-    {id:'roles',      label:'🎯 Postes/Rôles', icon:'🎯'},
-    {id:'types',      label:'📋 Types',      icon:'📋'},
-    {id:'paliers',    label:'📊 Polyvalence',icon:'📊'},
+    {id:'parametres',   label:'⚙️ Paramètres',    icon:'⚙️'},
+    {id:'shifts',       label:'🕐 Shifts',         icon:'🕐'},
+    {id:'projets',      label:'🏢 Projets',        icon:'🏢'},
+    {id:'postes',       label:'📍 Postes',         icon:'📍'},
+    {id:'roles',        label:'🎯 Postes/Rôles',   icon:'🎯'},
+    {id:'types',        label:'📋 Types',          icon:'📋'},
+    {id:'paliers',      label:'📊 Polyvalence',    icon:'📊'},
+    {id:'rolesAcces',   label:'🔐 Rôles & Accès',  icon:'🔐'},
   ];
 
   const saveAll = async () => {
@@ -5396,6 +5461,48 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
             nom: k,
             valeur: String(v),
             couleur: '',
+            actif: true,
+          }))
+        },
+        {
+          categorie: 'projetsDetail',
+          items: localProjetsDetail.map(p => ({
+            id: p.id,
+            nom: p.nom,
+            valeur: p.nom,
+            couleur: '',
+            extra1: p.client || '',
+            extra2: p.responsable || '',
+            extra3: p.statut || 'ACTIF',
+            extra4: '',
+            actif: p.statut === 'ACTIF',
+          }))
+        },
+        {
+          categorie: 'postes',
+          items: localPostes.map(p => ({
+            id: p.id,
+            nom: p.nom,
+            valeur: p.nom,
+            couleur: '',
+            extra1: p.projetId || '',
+            extra2: p.heureOuv || '06:00',
+            extra3: p.heureFerm || '22:00',
+            extra4: JSON.stringify({navire:p.navire,agentsRequis:p.agentsRequis}),
+            actif: p.actif !== false,
+          }))
+        },
+        {
+          categorie: 'rolesAcces',
+          items: rolesAcces.map(r => ({
+            id: 'role_' + r.role,
+            nom: r.role,
+            valeur: JSON.stringify(r.acces),
+            couleur: '',
+            extra1: r.label || '',
+            extra2: r.fixe ? 'TRUE' : 'FALSE',
+            extra3: '',
+            extra4: '',
             actif: true,
           }))
         },
@@ -5736,6 +5843,219 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
         '✓ Ces paliers seront utilisés dans le module Polyvalence pour calculer automatiquement le niveau de chaque agent.'
       )
     )
+
+    // ─── TAB: Projets détaillés (Phase 1B) ───
+    activeTab === 'postes' && React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:12}},
+      // Filtre par projet
+      React.createElement('div', {style:{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}},
+        React.createElement('label', {style:{fontSize:11,fontWeight:600,color:'#64748B',textTransform:'uppercase'}}, 'Filtrer par projet :'),
+        React.createElement('select', {
+          value: filterPosteProjet,
+          onChange: e => setFilterPosteProjet(e.target.value),
+          style:{padding:'6px 10px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:13}
+        },
+          React.createElement('option', {value:''}, 'Tous les projets'),
+          localProjetsDetail.map(p => React.createElement('option', {key:p.id, value:p.id}, p.nom))
+        ),
+        React.createElement('span', {style:{fontSize:11,color:'#94A3B8'}},
+          (filterPosteProjet
+            ? localPostes.filter(p=>p.projetId===filterPosteProjet)
+            : localPostes).length + ' poste(s)'
+        )
+      ),
+      // Formulaire nouveau poste
+      React.createElement(Card, null,
+        React.createElement('h3', {style:{margin:'0 0 12px',fontSize:13,fontWeight:700,color:'#1D2C41'}}, '+ Nouveau poste'),
+        React.createElement('div', {style:{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-end'}},
+          React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:4,flex:2,minWidth:140}},
+            React.createElement('label', {style:{fontSize:11,fontWeight:600,color:'#64748B',textTransform:'uppercase'}}, 'Nom du poste'),
+            React.createElement('input', {value:newPoste.nom, onChange:e=>setNewPoste(p=>({...p,nom:e.target.value})),
+              placeholder:'ex: Agent Quai', style:{padding:'7px 10px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:13}})
+          ),
+          React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:4,flex:2,minWidth:140}},
+            React.createElement('label', {style:{fontSize:11,fontWeight:600,color:'#64748B',textTransform:'uppercase'}}, 'Projet'),
+            React.createElement('select', {value:newPoste.projetId, onChange:e=>setNewPoste(p=>({...p,projetId:e.target.value})),
+              style:{padding:'7px 10px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:13}},
+              React.createElement('option',{value:''},'-- Projet --'),
+              localProjetsDetail.map(p => React.createElement('option',{key:p.id,value:p.id},p.nom))
+            )
+          ),
+          React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:4}},
+            React.createElement('label', {style:{fontSize:11,fontWeight:600,color:'#64748B',textTransform:'uppercase'}}, 'H.Ouv'),
+            React.createElement('input', {type:'time', value:newPoste.heureOuv, onChange:e=>setNewPoste(p=>({...p,heureOuv:e.target.value})),
+              style:{padding:'7px 8px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:12,width:95}})
+          ),
+          React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:4}},
+            React.createElement('label', {style:{fontSize:11,fontWeight:600,color:'#64748B',textTransform:'uppercase'}}, 'H.Ferm'),
+            React.createElement('input', {type:'time', value:newPoste.heureFerm, onChange:e=>setNewPoste(p=>({...p,heureFerm:e.target.value})),
+              style:{padding:'7px 8px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:12,width:95}})
+          ),
+          React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:4}},
+            React.createElement('label', {style:{fontSize:11,fontWeight:600,color:'#64748B',textTransform:'uppercase'}}, 'Agents'),
+            React.createElement('input', {type:'number',min:1,max:20, value:newPoste.agentsRequis,
+              onChange:e=>setNewPoste(p=>({...p,agentsRequis:parseInt(e.target.value)||1})),
+              style:{padding:'7px 8px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:12,width:60}})
+          ),
+          React.createElement('label', {style:{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600,color:'#64748B',paddingBottom:4,whiteSpace:'nowrap'}},
+            React.createElement('input', {type:'checkbox', checked:newPoste.navire,
+              onChange:e=>setNewPoste(p=>({...p,navire:e.target.checked}))}),
+            '⚓ Navire'
+          ),
+          React.createElement('button', {
+            onClick:()=>{
+              if (!newPoste.nom.trim() || !newPoste.projetId) return;
+              const id = 'po' + Date.now();
+              setLocalPostes(prev=>[...prev,{...newPoste,id,actif:true}]);
+              setNewPoste({nom:'',projetId:'',heureOuv:'06:00',heureFerm:'22:00',navire:false,agentsRequis:1,actif:true});
+            },
+            style:{padding:'8px 16px',background:'#D5A563',color:'#fff',border:'none',borderRadius:6,fontWeight:700,fontSize:12,cursor:'pointer',whiteSpace:'nowrap'}
+          }, '+ Ajouter')
+        )
+      ),
+      // Liste des postes
+      React.createElement('div', {style:{overflowX:'auto'}},
+        React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
+          React.createElement('thead', null,
+            React.createElement('tr', {style:{background:'#1D2C41',color:'#fff'}},
+              ['Poste','Projet','H.Ouv','H.Ferm','Agents','Navire','Actif','Actions'].map(h =>
+                React.createElement('th', {key:h, style:{padding:'8px 12px',textAlign:'left',fontWeight:600,fontSize:11,whiteSpace:'nowrap'}}, h)
+              )
+            )
+          ),
+          React.createElement('tbody', null,
+            (filterPosteProjet ? localPostes.filter(p=>p.projetId===filterPosteProjet) : localPostes)
+            .map((poste, i) => {
+              const projet = localProjetsDetail.find(p=>p.id===poste.projetId);
+              const isEditing = editPosteId === poste.id;
+              return React.createElement('tr', {key:poste.id,
+                style:{borderBottom:'1px solid #E2E8F0',background:i%2?'#fff':'#F8FAFC',opacity:poste.actif?1:0.5}},
+                React.createElement('td', {style:{padding:'8px 12px',fontWeight:700}},
+                  isEditing
+                    ? React.createElement('input', {value:poste.nom,
+                        onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],nom:e.target.value};setLocalPostes(np);},
+                        style:{padding:'4px 8px',borderRadius:4,border:'1px solid #D5A563',fontSize:12,width:120}})
+                    : poste.nom
+                ),
+                React.createElement('td', {style:{padding:'8px 12px'}},
+                  isEditing
+                    ? React.createElement('select', {value:poste.projetId,
+                        onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],projetId:e.target.value};setLocalPostes(np);},
+                        style:{padding:'4px 6px',borderRadius:4,border:'1px solid #D5A563',fontSize:11}},
+                        localProjetsDetail.map(p=>React.createElement('option',{key:p.id,value:p.id},p.nom))
+                      )
+                    : React.createElement('span', {style:{background:'#EFF6FF',color:'#2563EB',padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:600}},
+                        projet?.nom || '—')
+                ),
+                React.createElement('td', {style:{padding:'8px 12px',color:'#64748B'}},
+                  isEditing
+                    ? React.createElement('input', {type:'time',value:poste.heureOuv,
+                        onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],heureOuv:e.target.value};setLocalPostes(np);},
+                        style:{padding:'3px 6px',borderRadius:4,border:'1px solid #D5A563',fontSize:11,width:85}})
+                    : poste.heureOuv
+                ),
+                React.createElement('td', {style:{padding:'8px 12px',color:'#64748B'}},
+                  isEditing
+                    ? React.createElement('input', {type:'time',value:poste.heureFerm,
+                        onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],heureFerm:e.target.value};setLocalPostes(np);},
+                        style:{padding:'3px 6px',borderRadius:4,border:'1px solid #D5A563',fontSize:11,width:85}})
+                    : poste.heureFerm
+                ),
+                React.createElement('td', {style:{padding:'8px 12px',textAlign:'center'}},
+                  isEditing
+                    ? React.createElement('input', {type:'number',min:1,max:20,value:poste.agentsRequis,
+                        onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],agentsRequis:parseInt(e.target.value)||1};setLocalPostes(np);},
+                        style:{padding:'3px 6px',borderRadius:4,border:'1px solid #D5A563',fontSize:11,width:50,textAlign:'center'}})
+                    : React.createElement('span', {style:{fontWeight:700,color:'#1D2C41'}}, poste.agentsRequis)
+                ),
+                React.createElement('td', {style:{padding:'8px 12px',textAlign:'center'}},
+                  React.createElement('input', {type:'checkbox', checked:poste.navire,
+                    onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],navire:e.target.checked};setLocalPostes(np);}})
+                ),
+                React.createElement('td', {style:{padding:'8px 12px',textAlign:'center'}},
+                  React.createElement('input', {type:'checkbox', checked:poste.actif,
+                    onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],actif:e.target.checked};setLocalPostes(np);}})
+                ),
+                React.createElement('td', {style:{padding:'8px 12px'}},
+                  React.createElement('div', {style:{display:'flex',gap:6}},
+                    React.createElement('button', {
+                      onClick:()=>setEditPosteId(isEditing?null:poste.id),
+                      style:{padding:'4px 10px',background:isEditing?'#22C55E':'#F59E0B',color:'#fff',border:'none',borderRadius:4,fontSize:11,cursor:'pointer',fontWeight:600}
+                    }, isEditing?'✓ OK':'✏'),
+                    React.createElement('button', {
+                      onClick:()=>setLocalPostes(prev=>prev.filter(p=>p.id!==poste.id)),
+                      style:{padding:'4px 8px',background:'none',border:'1px solid #EF4444',color:'#EF4444',borderRadius:4,fontSize:11,cursor:'pointer'}
+                    }, '×')
+                  )
+                )
+              );
+            })
+          )
+        )
+      )
+    ),
+
+    // ─── TAB: Rôles & Accès (Phase 1B) ───
+    activeTab === 'rolesAcces' && React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:16}},
+      React.createElement('div', {style:{background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#1D4ED8'}},
+        'ℹ️ Configurez les accès par rôle. 0 = Aucun accès · 1 = Lecture seule · 2 = Lecture + Écriture'
+      ),
+      rolesAcces.map(roleRow => React.createElement(Card, {key:roleRow.role},
+        React.createElement('div', {style:{display:'flex',alignItems:'center',gap:10,marginBottom:14}},
+          React.createElement('div', {style:{width:36,height:36,borderRadius:8,background:'#1D2C41',
+            display:'flex',alignItems:'center',justifyContent:'center',color:'#D5A563',fontSize:18,flexShrink:0}},
+            roleRow.role==='direction'?'👑':roleRow.role==='cellule'?'🏗':'👤'
+          ),
+          React.createElement('div', null,
+            React.createElement('div', {style:{fontWeight:700,fontSize:14,color:'#1D2C41'}}, roleRow.label),
+            React.createElement('div', {style:{fontSize:11,color:'#94A3B8'}}, roleRow.fixe?'Rôle système (non supprimable)':'Rôle personnalisé')
+          )
+        ),
+        React.createElement('div', {style:{overflowX:'auto'}},
+          React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
+            React.createElement('thead', null,
+              React.createElement('tr', {style:{background:'#F8FAFC'}},
+                React.createElement('th', {style:{padding:'6px 12px',textAlign:'left',fontWeight:600,color:'#64748B',width:160}}, 'Module'),
+                React.createElement('th', {style:{padding:'6px 12px',textAlign:'center',fontWeight:600,color:'#64748B',width:80}}, 'Aucun'),
+                React.createElement('th', {style:{padding:'6px 12px',textAlign:'center',fontWeight:600,color:'#64748B',width:80}}, 'Lecture'),
+                React.createElement('th', {style:{padding:'6px 12px',textAlign:'center',fontWeight:600,color:'#64748B',width:120}}, 'Lect. + Écrit.')
+              )
+            ),
+            React.createElement('tbody', null,
+              MODULES_LIST.map((mod,i) => {
+                const currentAcces = roleRow.acces[mod.id] || 0;
+                const setAcces = (val) => {
+                  setRolesAcces(prev => prev.map(r =>
+                    r.role === roleRow.role
+                      ? {...r, acces: {...r.acces, [mod.id]: val}}
+                      : r
+                  ));
+                };
+                const COLORS = ['#94A3B8','#3B82F6','#22C55E'];
+                return React.createElement('tr', {key:mod.id,
+                  style:{borderBottom:'1px solid #F1F5F9',background:i%2?'#fff':'#F8FAFC'}},
+                  React.createElement('td', {style:{padding:'7px 12px',fontWeight:600,color:'#1E293B'}}, mod.label),
+                  [0,1,2].map(val =>
+                    React.createElement('td', {key:val, style:{padding:'6px 12px',textAlign:'center'}},
+                      React.createElement('div', {
+                        onClick:()=>setAcces(val),
+                        style:{
+                          width:24,height:24,borderRadius:'50%',margin:'0 auto',cursor:'pointer',
+                          background: currentAcces===val ? COLORS[val] : '#F1F5F9',
+                          border: `2px solid ${currentAcces===val ? COLORS[val] : '#E2E8F0'}`,
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          fontSize:12,color:currentAcces===val?'#fff':'#94A3B8',
+                          transition:'all .15s'
+                        }
+                      }, currentAcces===val?(val===0?'✗':val===1?'👁':'✓'):'')
+                    )
+                  )
+                );
+              })
+            )
+          )
+        )
+      ))
+    ),
   );
 };
 
