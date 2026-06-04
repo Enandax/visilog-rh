@@ -1774,9 +1774,12 @@ const Realisation = ({agents, planning, realisation, setRealisation, user, confi
   };
 
   // Stats semaine
-  const totalPlanifie = filtered.reduce((s,ag) => s + days.filter(d => getPlan(ag.id, fmtD(d)).shift).length, 0);
-  const totalRealise = filtered.reduce((s,ag) => s + days.filter(d => getReal(ag.id, fmtD(d)).statut === "RÉALISÉ").length, 0);
-  const totalNonRealise = filtered.reduce((s,ag) => s + days.filter(d => getReal(ag.id, fmtD(d)).statut === "NON RÉALISÉ").length, 0);
+  // Taux basé sur les jours passés uniquement (jusqu'à aujourd'hui inclus)
+  const todayKeyReal = fmtD(new Date());
+  const daysEcouleesReal = days.filter(d => fmtD(d) <= todayKeyReal);
+  const totalPlanifie = filtered.reduce((s,ag) => s + daysEcouleesReal.filter(d => getPlan(ag.id, fmtD(d)).shift).length, 0);
+  const totalRealise = filtered.reduce((s,ag) => s + daysEcouleesReal.filter(d => getReal(ag.id, fmtD(d)).statut === "RÉALISÉ").length, 0);
+  const totalNonRealise = filtered.reduce((s,ag) => s + daysEcouleesReal.filter(d => getReal(ag.id, fmtD(d)).statut === "NON RÉALISÉ").length, 0);
   const txReal = totalPlanifie > 0 ? Math.round(totalRealise/totalPlanifie*100) : 0;
 
   const exportCSV = () => {
@@ -3727,13 +3730,15 @@ const KPIs = ({agents, planning, navires, conges, user, realisation, incidents})
   const demandesAttente = conges.filter(c => c.statut==="EN ATTENTE").length;
   const nbRefus = Object.values(planning).filter(v => v.validatedByAgent===false||v.validatedByAgent==="false").length;
 
-  // ── KPIs Réalisation ──
-  const realKeys = Object.keys(realisation||{});
-  const totalPlanifie = realKeys.filter(k => planning[k]?.shift).length;
-  const totalRealise = realKeys.filter(k => realisation[k]?.statut==="RÉALISÉ").length;
-  const totalNonRealise = realKeys.filter(k => realisation[k]?.statut==="NON RÉALISÉ").length;
-  const totalPartiel = realKeys.filter(k => realisation[k]?.statut==="PARTIEL").length;
-  const totalRemplace = realKeys.filter(k => realisation[k]?.statut==="REMPLACÉ").length;
+  // ── KPIs Réalisation — base = jours passés uniquement (jusqu'à aujourd'hui inclus) ──
+  const fmtDKpi = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const todayStr = fmtDKpi(new Date());
+  const daysEcoules = days.filter(d => fmtDKpi(d) <= todayStr); // jours passés + aujourd'hui
+  const totalPlanifie = activeAgents.reduce((s,ag) => s + daysEcoules.filter(d => planning[ag.id+"_"+fmtDKpi(d)]?.shift).length, 0);
+  const totalRealise = activeAgents.reduce((s,ag) => s + daysEcoules.filter(d => (realisation||{})[ag.id+"_"+fmtDKpi(d)]?.statut==="RÉALISÉ").length, 0);
+  const totalNonRealise = activeAgents.reduce((s,ag) => s + daysEcoules.filter(d => (realisation||{})[ag.id+"_"+fmtDKpi(d)]?.statut==="NON RÉALISÉ").length, 0);
+  const totalPartiel = activeAgents.reduce((s,ag) => s + daysEcoules.filter(d => (realisation||{})[ag.id+"_"+fmtDKpi(d)]?.statut==="PARTIEL").length, 0);
+  const totalRemplace = activeAgents.reduce((s,ag) => s + daysEcoules.filter(d => (realisation||{})[ag.id+"_"+fmtDKpi(d)]?.statut==="REMPLACÉ").length, 0);
   const txRealisation = totalPlanifie > 0 ? Math.round(totalRealise/totalPlanifie*100) : 0;
 
   // ── Données graphique réalisation par jour ──
