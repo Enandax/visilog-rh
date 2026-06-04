@@ -5164,6 +5164,14 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
       return raw.map(p => {
         let navire = false, agentsRequis = 1;
         try { const ex = JSON.parse(p.extra4||'{}'); navire=!!ex.navire; agentsRequis=parseInt(ex.agentsRequis)||1; } catch(e) {}
+        let difficulte = 1, mode = 'JOURNALIER';
+        try {
+          const ex = JSON.parse(p.extra4||'{}');
+          navire = !!ex.navire;
+          agentsRequis = parseInt(ex.agentsRequis)||1;
+          difficulte = parseInt(ex.difficulte)||1;
+          mode = ex.mode || 'JOURNALIER';
+        } catch(e) {}
         return {
           id: p.id,
           nom: p.valeur,
@@ -5172,28 +5180,30 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
           heureFerm: p.extra3 || '22:00',
           navire,
           agentsRequis,
+          difficulte,
+          mode,
           actif: p.actif !== false,
         };
       });
     }
     return [
-      {id:'po1',  nom:'PFM',             projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
-      {id:'po2',  nom:'PFC',             projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
-      {id:'po3',  nom:'50KG',            projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, actif:true},
-      {id:'po4',  nom:'Planificateur',   projetId:'p1', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
-      {id:'po5',  nom:'Superviseur PFO', projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, actif:true},
-      {id:'po6',  nom:'Chargement',      projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, actif:true},
-      {id:'po7',  nom:'Douane',          projetId:'p2', heureOuv:'08:00', heureFerm:'17:00', navire:true,  agentsRequis:1, actif:true},
-      {id:'po8',  nom:'Raffinerie',      projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, actif:true},
-      {id:'po9',  nom:'Agent COSTOMA',   projetId:'p3', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
-      {id:'po10', nom:'Agent FOODIPEX',  projetId:'p4', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, actif:true},
-      {id:'po11', nom:'Quai Marjane',    projetId:'p5', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, actif:true},
-      {id:'po12', nom:'Kiosque Marjane', projetId:'p5', heureOuv:'08:00', heureFerm:'20:00', navire:false, agentsRequis:1, actif:true},
+      {id:'po1',  nom:'PFM',             projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, difficulte:2, mode:'JOURNALIER', actif:true},
+      {id:'po2',  nom:'PFC',             projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, difficulte:3, mode:'24/24',      actif:true},
+      {id:'po3',  nom:'50KG',            projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, difficulte:5, mode:'24/24',      actif:true},
+      {id:'po4',  nom:'Planificateur',   projetId:'p1', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, difficulte:2, mode:'JOURNALIER', actif:true},
+      {id:'po5',  nom:'Superviseur PFO', projetId:'p1', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:1, difficulte:3, mode:'24/24',      actif:true},
+      {id:'po6',  nom:'Chargement',      projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, difficulte:5, mode:'24/24',      actif:true},
+      {id:'po7',  nom:'Douane',          projetId:'p2', heureOuv:'08:00', heureFerm:'17:00', navire:true,  agentsRequis:1, difficulte:2, mode:'JOURNALIER', actif:true},
+      {id:'po8',  nom:'Raffinerie',      projetId:'p2', heureOuv:'06:00', heureFerm:'22:00', navire:true,  agentsRequis:2, difficulte:3, mode:'24/24',      actif:true},
+      {id:'po9',  nom:'Agent COSTOMA',   projetId:'p3', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, difficulte:1, mode:'JOURNALIER', actif:true},
+      {id:'po10', nom:'Agent FOODIPEX',  projetId:'p4', heureOuv:'08:00', heureFerm:'17:00', navire:false, agentsRequis:1, difficulte:4, mode:'JOURNALIER', actif:true},
+      {id:'po11', nom:'Quai Marjane',    projetId:'p5', heureOuv:'06:00', heureFerm:'22:00', navire:false, agentsRequis:2, difficulte:3, mode:'24/24',      actif:true},
+      {id:'po12', nom:'Kiosque Marjane', projetId:'p5', heureOuv:'08:00', heureFerm:'20:00', navire:false, agentsRequis:1, difficulte:3, mode:'JOURNALIER', actif:true},
     ];
   });
   const [filterPosteProjet, setFilterPosteProjet] = useState('');
   const [editPosteId, setEditPosteId] = useState(null);
-  const [newPoste, setNewPoste] = useState({nom:'',projetId:'',heureOuv:'06:00',heureFerm:'22:00',navire:false,agentsRequis:1,actif:true});
+  const [newPoste, setNewPoste] = useState({nom:'',projetId:'',heureOuv:'06:00',heureFerm:'22:00',navire:false,agentsRequis:1,difficulte:1,mode:'JOURNALIER',actif:true});
 
   // ── Rôles & Accès (Phase 1B) ──
   const MODULES_LIST = [
@@ -5379,7 +5389,7 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
             extra1: p.projetId || '',
             extra2: p.heureOuv || '06:00',
             extra3: p.heureFerm || '22:00',
-            extra4: JSON.stringify({navire:p.navire,agentsRequis:p.agentsRequis}),
+            extra4: JSON.stringify({navire:p.navire, agentsRequis:p.agentsRequis, difficulte:p.difficulte||1, mode:p.mode||'JOURNALIER'}),
             actif: p.actif !== false,
           }))
         },
@@ -5787,6 +5797,21 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
               onChange:e=>setNewPoste(p=>({...p,agentsRequis:parseInt(e.target.value)||1})),
               style:{padding:'7px 8px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:12,width:60}})
           ),
+          React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:4}},
+            React.createElement('label', {style:{fontSize:11,fontWeight:600,color:'#64748B',textTransform:'uppercase'}}, 'Difficulté'),
+            React.createElement('select', {value:newPoste.difficulte, onChange:e=>setNewPoste(p=>({...p,difficulte:parseInt(e.target.value)})),
+              style:{padding:'7px 8px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:12,width:70}},
+              [1,2,3,4,5].map(n=>React.createElement('option',{key:n,value:n},n+' ★'))
+            )
+          ),
+          React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:4}},
+            React.createElement('label', {style:{fontSize:11,fontWeight:600,color:'#64748B',textTransform:'uppercase'}}, 'Mode'),
+            React.createElement('select', {value:newPoste.mode, onChange:e=>setNewPoste(p=>({...p,mode:e.target.value})),
+              style:{padding:'7px 8px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:12,width:110}},
+              React.createElement('option',{value:'JOURNALIER'},'Journalier'),
+              React.createElement('option',{value:'24/24'},'24/24')
+            )
+          ),
           React.createElement('label', {style:{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600,color:'#64748B',paddingBottom:4,whiteSpace:'nowrap'}},
             React.createElement('input', {type:'checkbox', checked:newPoste.navire,
               onChange:e=>setNewPoste(p=>({...p,navire:e.target.checked}))}),
@@ -5808,7 +5833,7 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
         React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
           React.createElement('thead', null,
             React.createElement('tr', {style:{background:'#1D2C41',color:'#fff'}},
-              ['Poste','Projet','H.Ouv','H.Ferm','Agents','Navire','Actif','Actions'].map(h =>
+              ['Poste','Projet','H.Ouv','H.Ferm','Agents','Diff.','Mode','Navire','Actif','Actions'].map(h =>
                 React.createElement('th', {key:h, style:{padding:'8px 12px',textAlign:'left',fontWeight:600,fontSize:11,whiteSpace:'nowrap'}}, h)
               )
             )
@@ -5857,6 +5882,33 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
                         onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],agentsRequis:parseInt(e.target.value)||1};setLocalPostes(np);},
                         style:{padding:'3px 6px',borderRadius:4,border:'1px solid #D5A563',fontSize:11,width:50,textAlign:'center'}})
                     : React.createElement('span', {style:{fontWeight:700,color:'#1D2C41'}}, poste.agentsRequis)
+                ),
+                React.createElement('td', {style:{padding:'8px 12px',textAlign:'center'}},
+                  isEditing
+                    ? React.createElement('select', {value:poste.difficulte||1,
+                        onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],difficulte:parseInt(e.target.value)};setLocalPostes(np);},
+                        style:{padding:'3px 4px',borderRadius:4,border:'1px solid #D5A563',fontSize:11,width:55}},
+                        [1,2,3,4,5].map(n=>React.createElement('option',{key:n,value:n},n+' ★'))
+                      )
+                    : React.createElement('span', {style:{
+                        background:['#F1F5F9','#DBEAFE','#FEF3C7','#FED7AA','#FEE2E2'][((poste.difficulte||1)-1)],
+                        color:['#64748B','#1D4ED8','#92400E','#C2410C','#DC2626'][((poste.difficulte||1)-1)],
+                        fontWeight:700,fontSize:11,padding:'2px 8px',borderRadius:10
+                      }}, (poste.difficulte||1)+' ★')
+                ),
+                React.createElement('td', {style:{padding:'8px 12px',textAlign:'center'}},
+                  isEditing
+                    ? React.createElement('select', {value:poste.mode||'JOURNALIER',
+                        onChange:e=>{const np=[...localPostes];const idx=np.findIndex(p=>p.id===poste.id);np[idx]={...np[idx],mode:e.target.value};setLocalPostes(np);},
+                        style:{padding:'3px 4px',borderRadius:4,border:'1px solid #D5A563',fontSize:11,width:90}},
+                        React.createElement('option',{value:'JOURNALIER'},'Journalier'),
+                        React.createElement('option',{value:'24/24'},'24/24')
+                      )
+                    : React.createElement('span', {style:{
+                        background: poste.mode==='24/24'?'#EEF2FF':'#F0FDF4',
+                        color: poste.mode==='24/24'?'#4338CA':'#16A34A',
+                        fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:10
+                      }}, poste.mode||'JOURNALIER')
                 ),
                 React.createElement('td', {style:{padding:'8px 12px',textAlign:'center'}},
                   React.createElement('input', {type:'checkbox', checked:poste.navire,
@@ -5951,6 +6003,279 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
   );
 };
 
+// ─── MODULE : POLYVALENCE (Phase 3) ──────────────────────────
+// Formule: SCORE = Σ(difficulté_poste) × coef_projet
+// coef_projet = 1 + (nb_projets_distincts - 1) × 0.3
+
+const calcPolyvalence = (agent, localPostes, localProjetsDetail) => {
+  // Postes maîtrisés = roles de l'agent croisés avec localPostes
+  const postesAgent = (agent.roles || [])
+    .map(roleName => localPostes.find(p => p.nom === roleName && p.actif !== false))
+    .filter(Boolean);
+
+  if (postesAgent.length === 0) return { score: 0, niveau: 'E', postesDetail: [], projetsDistincts: 0, coefProjet: 1 };
+
+  // Projets distincts couverts
+  const projetsIds = [...new Set(postesAgent.map(p => p.projetId).filter(Boolean))];
+  const nbProjets = projetsIds.length || 1;
+  const coefProjet = Math.round((1 + (nbProjets - 1) * 0.3) * 100) / 100;
+
+  // Somme des difficultés
+  const sommeDiff = postesAgent.reduce((s, p) => s + (parseInt(p.difficulte) || 1), 0);
+  const score = Math.round(sommeDiff * coefProjet * 10) / 10;
+
+  // Niveau selon paliers
+  const PALIERS_DEFAULT = [
+    {niveau:'A', scoreMin:40},
+    {niveau:'B', scoreMin:25},
+    {niveau:'C', scoreMin:16},
+    {niveau:'D', scoreMin:5},
+    {niveau:'E', scoreMin:0},
+  ];
+  const paliersCfg = window.__visilogConfig?.paliers
+    ? window.__visilogConfig.paliers.map(p => ({
+        niveau: p.valeur,
+        scoreMin: parseInt(p.extra1) || 0,
+      })).sort((a,b) => b.scoreMin - a.scoreMin)
+    : PALIERS_DEFAULT;
+
+  const palier = paliersCfg.find(p => score >= p.scoreMin) || paliersCfg[paliersCfg.length-1];
+
+  // Détail par poste
+  const postesDetail = postesAgent.map(p => {
+    const projet = localProjetsDetail.find(pr => pr.id === p.projetId);
+    return {
+      nom: p.nom,
+      projet: projet?.nom || p.projetId || '—',
+      difficulte: parseInt(p.difficulte) || 1,
+      mode: p.mode || 'JOURNALIER',
+    };
+  });
+
+  return { score, niveau: palier.niveau, postesDetail, projetsDistincts: nbProjets, coefProjet, sommeDiff };
+};
+
+const NIVEAU_COLORS = {
+  A: {bg:'#F0FDF4', color:'#16A34A', border:'#BBF7D0'},
+  B: {bg:'#EFF6FF', color:'#2563EB', border:'#BFDBFE'},
+  C: {bg:'#FFFBEB', color:'#D97706', border:'#FDE68A'},
+  D: {bg:'#FFF7ED', color:'#EA580C', border:'#FED7AA'},
+  E: {bg:'#FEF2F2', color:'#DC2626', border:'#FECACA'},
+};
+
+const Polyvalence = ({agents, user, localPostes, localProjetsDetail}) => {
+  const isMobile = useIsMobile();
+  const [filterProjet, setFilterProjet] = useState('');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('score'); // score | nom | niveau
+
+  // Postes et projets depuis la config ou fallback
+  const postes = localPostes && localPostes.length > 0 ? localPostes : [];
+  const projets = localProjetsDetail && localProjetsDetail.length > 0 ? localProjetsDetail : [];
+
+  const activeAgents = agents.filter(a => a.actif === true || a.actif === 'TRUE' || a.actif === 'true');
+
+  // Calculer polyvalence pour chaque agent
+  const agentsWithScore = activeAgents.map(ag => ({
+    ...ag,
+    poly: calcPolyvalence(ag, postes, projets),
+  }));
+
+  // Filtres
+  const filtered = agentsWithScore
+    .filter(ag => !filterProjet || ag.projet === filterProjet)
+    .filter(ag => !search || `${ag.nom} ${ag.prenom}`.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'score') return b.poly.score - a.poly.score;
+      if (sortBy === 'niveau') return a.poly.niveau.localeCompare(b.poly.niveau);
+      return a.nom.localeCompare(b.nom);
+    });
+
+  // Stats globales
+  const niveauxCount = {A:0, B:0, C:0, D:0, E:0};
+  agentsWithScore.forEach(ag => { niveauxCount[ag.poly.niveau] = (niveauxCount[ag.poly.niveau]||0)+1; });
+  const avgScore = agentsWithScore.length > 0
+    ? Math.round(agentsWithScore.reduce((s,ag) => s + ag.poly.score, 0) / agentsWithScore.length * 10) / 10
+    : 0;
+
+  // Vue agent — uniquement son propre profil
+  if (user?.role === 'agent') {
+    const agentSelf = agentsWithScore.find(a => a.id === user.agentId);
+    if (!agentSelf) return React.createElement('div', {style:{padding:40,textAlign:'center',color:'#94A3B8'}}, 'Profil non disponible');
+    const poly = agentSelf.poly;
+    const nc = NIVEAU_COLORS[poly.niveau] || NIVEAU_COLORS.E;
+
+    // Postes manquants pour le niveau suivant
+    const ORDRE = ['E','D','C','B','A'];
+    const idxActuel = ORDRE.indexOf(poly.niveau);
+    const niveauSuivant = ORDRE[idxActuel + 1];
+
+    return React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:16}},
+      React.createElement('h2', {style:{margin:0,fontSize:16,fontWeight:700,color:'#1E293B'}}, 'Ma Polyvalence'),
+
+      // Carte niveau
+      React.createElement('div', {style:{background:nc.bg,border:`2px solid ${nc.border}`,borderRadius:16,padding:24,textAlign:'center'}},
+        React.createElement('div', {style:{fontSize:64,fontWeight:900,color:nc.color,lineHeight:1}}, poly.niveau),
+        React.createElement('div', {style:{fontSize:16,fontWeight:700,color:nc.color,marginTop:4}}, 'Niveau '+poly.niveau),
+        React.createElement('div', {style:{fontSize:13,color:'#64748B',marginTop:8}}, 'Score : ',
+          React.createElement('strong', {style:{color:nc.color}}, poly.score)
+        ),
+        React.createElement('div', {style:{fontSize:12,color:'#94A3B8',marginTop:4}},
+          poly.projetsDistincts+' projet(s) · coef ×'+poly.coefProjet
+        )
+      ),
+
+      // Postes maîtrisés
+      React.createElement('div', {style:{background:'#fff',borderRadius:12,padding:16,boxShadow:'0 1px 3px #0001'}},
+        React.createElement('h3', {style:{margin:'0 0 12px',fontSize:13,fontWeight:700,color:'#1D2C41'}},
+          '🎯 Postes maîtrisés ('+poly.postesDetail.length+')'
+        ),
+        poly.postesDetail.length === 0
+          ? React.createElement('p', {style:{color:'#94A3B8',fontSize:13,margin:0}}, 'Aucun poste assigné')
+          : React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:8}},
+              poly.postesDetail.map((p, i) => {
+                const DIFF_COLORS = ['','#94A3B8','#3B82F6','#F59E0B','#F97316','#EF4444'];
+                return React.createElement('div', {key:i,
+                  style:{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',
+                    background:'#F8FAFC',borderRadius:8,border:'1px solid #E2E8F0'}},
+                  React.createElement('div', {style:{width:28,height:28,borderRadius:6,
+                    background:DIFF_COLORS[p.difficulte]+'22',display:'flex',alignItems:'center',
+                    justifyContent:'center',fontWeight:800,color:DIFF_COLORS[p.difficulte],fontSize:13}},
+                    p.difficulte),
+                  React.createElement('div', {style:{flex:1}},
+                    React.createElement('div', {style:{fontWeight:700,fontSize:13,color:'#1E293B'}}, p.nom),
+                    React.createElement('div', {style:{fontSize:11,color:'#64748B'}}, p.projet)
+                  ),
+                  React.createElement('span', {style:{
+                    background: p.mode==='24/24'?'#EEF2FF':'#F0FDF4',
+                    color: p.mode==='24/24'?'#4338CA':'#16A34A',
+                    fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:10
+                  }}, p.mode)
+                );
+              })
+            )
+      ),
+
+      // Progression vers niveau suivant
+      niveauSuivant && React.createElement('div', {style:{background:'#FAF6EE',border:'1px solid #D5A563',borderRadius:12,padding:16}},
+        React.createElement('h3', {style:{margin:'0 0 8px',fontSize:13,fontWeight:700,color:'#D5A563'}},
+          '📈 Pour atteindre le niveau '+niveauSuivant
+        ),
+        React.createElement('div', {style:{fontSize:12,color:'#92400E'}},
+          'Score actuel : ',React.createElement('strong',null,poly.score),
+          ' · Score requis : ',
+          React.createElement('strong',null,
+            (() => {
+              const PALIERS = window.__visilogConfig?.paliers
+                ? window.__visilogConfig.paliers.map(p=>({niveau:p.valeur,scoreMin:parseInt(p.extra1)||0}))
+                : [{niveau:'A',scoreMin:40},{niveau:'B',scoreMin:25},{niveau:'C',scoreMin:16},{niveau:'D',scoreMin:5},{niveau:'E',scoreMin:0}];
+              return PALIERS.find(p=>p.niveau===niveauSuivant)?.scoreMin || '—';
+            })()
+          )
+        )
+      )
+    );
+  }
+
+  // Vue direction — tableau complet
+  return React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:16}},
+    React.createElement('h2', {style:{margin:0,fontSize:16,fontWeight:700,color:'#1E293B'}}, '📊 Polyvalence des agents'),
+
+    // Stats globales
+    React.createElement('div', {style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:8}},
+      Object.entries(niveauxCount).map(([niv, nb]) => {
+        const nc = NIVEAU_COLORS[niv];
+        return React.createElement('div', {key:niv,
+          style:{background:nc.bg,border:`1px solid ${nc.border}`,borderRadius:10,padding:'10px 12px',textAlign:'center'}},
+          React.createElement('div', {style:{fontSize:22,fontWeight:800,color:nc.color}}, nb),
+          React.createElement('div', {style:{fontSize:12,fontWeight:700,color:nc.color}}, 'Niveau '+niv)
+        );
+      }),
+      React.createElement('div', {style:{background:'#F8FAFC',border:'1px solid #E2E8F0',borderRadius:10,padding:'10px 12px',textAlign:'center'}},
+        React.createElement('div', {style:{fontSize:22,fontWeight:800,color:'#1D2C41'}}, avgScore),
+        React.createElement('div', {style:{fontSize:12,color:'#64748B'}}, 'Score moyen')
+      )
+    ),
+
+    // Filtres
+    React.createElement('div', {style:{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}},
+      React.createElement('input', {value:search, onChange:e=>setSearch(e.target.value),
+        placeholder:'Rechercher un agent...',
+        style:{padding:'7px 10px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:13,flex:1,minWidth:150}}),
+      React.createElement('select', {value:filterProjet, onChange:e=>setFilterProjet(e.target.value),
+        style:{padding:'7px 10px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:13}},
+        React.createElement('option',{value:''},'Tous les projets'),
+        [...new Set(activeAgents.map(a=>a.projet).filter(Boolean))].map(p=>
+          React.createElement('option',{key:p,value:p},p))
+      ),
+      React.createElement('select', {value:sortBy, onChange:e=>setSortBy(e.target.value),
+        style:{padding:'7px 10px',borderRadius:6,border:'1px solid #CBD5E1',fontSize:13}},
+        React.createElement('option',{value:'score'},'Trier: Score'),
+        React.createElement('option',{value:'niveau'},'Trier: Niveau'),
+        React.createElement('option',{value:'nom'},'Trier: Nom')
+      )
+    ),
+
+    // Tableau
+    React.createElement('div', {style:{overflowX:'auto'}},
+      React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
+        React.createElement('thead', null,
+          React.createElement('tr', {style:{background:'#1D2C41',color:'#fff'}},
+            ['Agent','Projet','Postes maîtrisés','Projets','Coef','Score','Niveau'].map(h=>
+              React.createElement('th',{key:h,style:{padding:'10px 12px',textAlign:'left',fontWeight:600,fontSize:11,whiteSpace:'nowrap'}},h)
+            )
+          )
+        ),
+        React.createElement('tbody', null,
+          filtered.map((ag, i) => {
+            const poly = ag.poly;
+            const nc = NIVEAU_COLORS[poly.niveau] || NIVEAU_COLORS.E;
+            const DIFF_COLORS = ['','#94A3B8','#3B82F6','#F59E0B','#F97316','#EF4444'];
+            return React.createElement('tr', {key:ag.id,
+              style:{borderBottom:'1px solid #E2E8F0',background:i%2?'#fff':'#F8FAFC'}},
+              React.createElement('td', {style:{padding:'10px 12px'}},
+                React.createElement('div',{style:{fontWeight:700,color:'#1E293B'}},ag.nom,' ',ag.prenom),
+                React.createElement('div',{style:{fontSize:10,color:'#94A3B8'}},ag.tel||'')
+              ),
+              React.createElement('td', {style:{padding:'10px 12px',fontSize:11,color:'#64748B'}},
+                ag.projet?.split(' ')[0]||'—'),
+              React.createElement('td', {style:{padding:'10px 12px'}},
+                poly.postesDetail.length > 0
+                  ? React.createElement('div',{style:{display:'flex',gap:4,flexWrap:'wrap'}},
+                      poly.postesDetail.map((p,j)=>React.createElement('span',{key:j,
+                        title:`${p.projet} · diff.${p.difficulte} · ${p.mode}`,
+                        style:{background:DIFF_COLORS[p.difficulte]+'22',color:DIFF_COLORS[p.difficulte],
+                          fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:10,
+                          border:`1px solid ${DIFF_COLORS[p.difficulte]}44`,cursor:'default'}},
+                        p.nom,' (',p.difficulte,'★)'))
+                    )
+                  : React.createElement('span',{style:{color:'#94A3B8',fontSize:11}},'Aucun poste')
+              ),
+              React.createElement('td', {style:{padding:'10px 12px',textAlign:'center',fontWeight:600,color:'#6366F1'}},
+                poly.projetsDistincts),
+              React.createElement('td', {style:{padding:'10px 12px',textAlign:'center',color:'#64748B',fontSize:11}},
+                '×'+poly.coefProjet),
+              React.createElement('td', {style:{padding:'10px 12px',textAlign:'center'}},
+                React.createElement('span',{style:{
+                  background:nc.bg,color:nc.color,border:`1px solid ${nc.border}`,
+                  fontWeight:800,fontSize:14,padding:'4px 12px',borderRadius:20,display:'inline-block'
+                }},poly.score)
+              ),
+              React.createElement('td', {style:{padding:'10px 12px',textAlign:'center'}},
+                React.createElement('span',{style:{
+                  background:nc.color,color:'#fff',fontWeight:800,fontSize:15,
+                  width:32,height:32,borderRadius:'50%',display:'inline-flex',
+                  alignItems:'center',justifyContent:'center'
+                }},poly.niveau)
+              )
+            );
+          })
+        )
+      )
+    )
+  );
+};
+
 const NAV = [{
   id: "kpis",
   label: "Tableau de bord",
@@ -6006,6 +6331,10 @@ const NAV = [{
   label: "Configuration",
   icon: "⚙️",
   directionOnly: true
+}, {
+  id: "polyvalence",
+  label: "Polyvalence",
+  icon: "🏆"
 }];
 function App() {
   const [user, setUser] = useState(null);
@@ -6177,7 +6506,7 @@ function App() {
   if (!user) return /*#__PURE__*/React.createElement(Login, {
     onLogin: handleLogin
   });
-  const agentNav = user.role === "agent" ? NAV.filter(n => ["planning", "conges", "fiche", "bulletin"].includes(n.id)) : user.role === "cellule" ? NAV.filter(n => !["agents", "paie", "refus", "pointage", "incidents", "bulletin"].includes(n.id) && !n.directionOnly && !n.agentOnly) : NAV.filter(n => (!n.directionOnly || user.role === "direction") && !n.agentOnly);
+  const agentNav = user.role === "agent" ? NAV.filter(n => ["planning", "conges", "fiche", "bulletin", "polyvalence"].includes(n.id)) : user.role === "cellule" ? NAV.filter(n => !["agents", "paie", "refus", "pointage", "incidents", "bulletin"].includes(n.id) && !n.directionOnly && !n.agentOnly) : NAV.filter(n => (!n.directionOnly || user.role === "direction") && !n.agentOnly);
 
   const agentInfo = user?.role === "agent" ? agents.find(a => a.id === user.agentId) : null;
   const pendingConges = (conges||[]).filter(c => c.statut === "EN ATTENTE").length;
@@ -6416,6 +6745,24 @@ function App() {
     setConfigRoles: setConfigRoles,
     configColors: configColors,
     setConfigColors: setConfigColors,
+  }),
+  tab === "polyvalence" && React.createElement(Polyvalence, {
+    agents: agents,
+    user: user,
+    localPostes: (() => {
+      const raw = window.__visilogConfig?.postes;
+      if (raw && raw.length > 0) return raw.map(p => {
+        let navire=false,agentsRequis=1,difficulte=1,mode='JOURNALIER';
+        try { const ex=JSON.parse(p.extra4||'{}'); navire=!!ex.navire; agentsRequis=parseInt(ex.agentsRequis)||1; difficulte=parseInt(ex.difficulte)||1; mode=ex.mode||'JOURNALIER'; } catch(e) {}
+        return {id:p.id,nom:p.valeur,projetId:p.extra1||'',heureOuv:p.extra2||'06:00',heureFerm:p.extra3||'22:00',navire,agentsRequis,difficulte,mode,actif:p.actif!==false};
+      });
+      return [];
+    })(),
+    localProjetsDetail: (() => {
+      const raw = window.__visilogConfig?.projetsDetail;
+      if (raw && raw.length > 0) return raw.map(p => ({id:p.id||'p_'+p.valeur,nom:p.valeur,client:p.extra1||p.valeur,responsable:p.extra2||'',statut:p.extra3||'ACTIF'}));
+      return [{id:'p1',nom:'COSUMAR PFO'},{id:'p2',nom:'STEP-UP'},{id:'p3',nom:'COSTOMA'},{id:'p4',nom:'FOODIPEX'},{id:'p5',nom:'MARJANE SAPINO'},{id:'p6',nom:'CELLULE SIEGE'},{id:'p7',nom:'DIGIBAY'}];
+    })(),
   })), isMobile && /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed",
