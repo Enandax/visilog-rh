@@ -6343,12 +6343,23 @@ const Annonces = ({user, agents}) => {
 
   const creerAnnonce = async () => {
     if (!f.titre.trim() || !f.message.trim()) return;
-    const r = await api('annonces.create', f, user.token);
+    // Construire le payload explicitement
+    const payload = {
+      titre: f.titre.trim(),
+      message: f.message.trim(),
+      priorite: f.priorite || 'NORMALE',
+      cible: f.cible || 'TOUS',
+      accuseRequis: f.accuseRequis === true,
+    };
+    const r = await api('annonces.create', payload, user.token);
     if (r.ok) {
       const newA = {
-        id: r.id, titre: f.titre, message: f.message,
-        priorite: f.priorite, cible: f.cible,
-        accuseRequis: f.accuseRequis,
+        id: r.id || ('a'+Date.now()),
+        titre: payload.titre,
+        message: payload.message,
+        priorite: payload.priorite,
+        cible: payload.cible,
+        accuseRequis: payload.accuseRequis,
         auteur: user.username,
         createdAt: new Date().toISOString(),
         lectures: []
@@ -6357,6 +6368,8 @@ const Annonces = ({user, agents}) => {
       showToast('Annonce publiée ✓');
       setForm(false);
       setF({titre:'', message:'', priorite:'NORMALE', cible:'TOUS', accuseRequis:false});
+    } else {
+      showToast('Erreur: ' + (r.error || 'Publication échouée'), 'error');
     }
   };
 
