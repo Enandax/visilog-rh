@@ -19,7 +19,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.5.0/Recharts.min.js"></script>
   <script>
 const {useState,useEffect,useCallback,useRef} = React;
 const API_URL = "https://script.google.com/macros/s/AKfycbySbWs88KbldVoBCXnZSvV6I8aJRK7vcP-SMKxeQYzaGwnpvuxEZZFqglgVgMvA7hykCw/exec";
@@ -1727,24 +1726,14 @@ const Realisation = ({agents, planning, realisation, setRealisation, user, confi
     showToast(statut==="RÉALISÉ" ? "Shift réalisé ✓" : statut==="NON RÉALISÉ" ? "Non réalisé enregistré" : statut+" enregistré");
   };
 
+  const [selectModal, setSelectModal] = useState(null); // {agentId, dk, plan}
+
   const handleClick = (agentId, dk, currentStatut) => {
     if (user?.role === "agent") return;
     const plan = getPlan(agentId, dk);
     if (!plan.shift) return;
-    // Cycler: vide → RÉALISÉ → NON RÉALISÉ (avec cause) → PARTIEL → REMPLACÉ → vide
-    if (!currentStatut || currentStatut === "") {
-      setStatut(agentId, dk, "RÉALISÉ", "");
-    } else if (currentStatut === "RÉALISÉ") {
-      setCauseModal({agentId, dk, statut:"NON RÉALISÉ"});
-      setCause("");
-    } else if (currentStatut === "NON RÉALISÉ") {
-      setCauseModal({agentId, dk, statut:"PARTIEL"});
-      setCause("");
-    } else if (currentStatut === "PARTIEL") {
-      setStatut(agentId, dk, "REMPLACÉ", "");
-    } else {
-      setStatut(agentId, dk, "", "");
-    }
+    // Ouvrir un modal de sélection directe (plus intuitif que le cycle)
+    setSelectModal({agentId, dk, plan, currentStatut});
   };
 
   // Stats semaine
@@ -1842,7 +1831,7 @@ const Realisation = ({agents, planning, realisation, setRealisation, user, confi
               return React.createElement("td",{key:dk,style:{padding:3,borderLeft:"1px solid #E2E8F0",background:isToday?"#FAF6EE":undefined}},
                 plan.shift ? React.createElement("div",{
                   onClick:()=>handleClick(ag.id,dk,real.statut),
-                  title: real.cause ? "Cause: "+real.cause : plan.shift,
+                  title: real.statut ? (real.statut + (real.cause?" — "+real.cause:"")) : ("Cliquer: "+plan.shift),
                   style:{borderRadius:6,padding:"4px 3px",textAlign:"center",cursor:user?.role==="agent"?"default":"pointer",
                     minHeight:44,display:"flex",flexDirection:"column",justifyContent:"center",
                     background:sc?sc.bg:"#F1F5F9",border:`1px solid ${sc?sc.badge+"44":"#E2E8F0"}`,
@@ -1865,6 +1854,49 @@ const Realisation = ({agents, planning, realisation, setRealisation, user, confi
               );
             })
           ))
+        )
+      )
+    ),
+
+    // Modal sélection statut
+    selectModal && React.createElement(Modal,{
+      title:selectModal.plan.shift+" — "+selectModal.dk.split("-").reverse().join("/"),
+      onClose:()=>setSelectModal(null)},
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+        React.createElement("p",{style:{margin:0,fontSize:12,color:"#64748B"}},
+          "Statut actuel : ",
+          React.createElement("strong",null, selectModal.currentStatut||"Non défini")
+        ),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
+          [
+            {statut:"RÉALISÉ",   icon:"✓", color:"#22C55E", bg:"#F0FDF4"},
+            {statut:"NON RÉALISÉ",icon:"✗", color:"#EF4444", bg:"#FEF2F2"},
+            {statut:"PARTIEL",   icon:"◑", color:"#F59E0B", bg:"#FFFBEB"},
+            {statut:"REMPLACÉ",  icon:"⇄", color:"#3B82F6", bg:"#EFF6FF"},
+          ].map(s => React.createElement("div",{
+            key:s.statut,
+            onClick:()=>{
+              if(s.statut==="NON RÉALISÉ"||s.statut==="PARTIEL"){
+                setCauseModal({agentId:selectModal.agentId,dk:selectModal.dk,statut:s.statut});
+                setCause("");
+              } else {
+                setStatut(selectModal.agentId,selectModal.dk,s.statut,"");
+              }
+              setSelectModal(null);
+            },
+            style:{padding:"12px",background:selectModal.currentStatut===s.statut?s.color:s.bg,
+              color:selectModal.currentStatut===s.statut?"#fff":s.color,
+              border:`2px solid ${s.color}`,borderRadius:8,textAlign:"center",cursor:"pointer",
+              fontWeight:700,fontSize:13,transition:"all .15s"}},
+            React.createElement("div",{style:{fontSize:18}},s.icon),
+            React.createElement("div",{style:{fontSize:11,marginTop:2}},s.statut)
+          ))
+        ),
+        selectModal.currentStatut && React.createElement("div",{
+          onClick:()=>{setStatut(selectModal.agentId,selectModal.dk,"","");setSelectModal(null);},
+          style:{padding:"8px",background:"#F1F5F9",borderRadius:6,textAlign:"center",
+            cursor:"pointer",fontSize:12,color:"#64748B",fontWeight:600}},
+          "✕ Effacer le statut"
         )
       )
     ),
@@ -3640,14 +3672,8 @@ const KPIs = ({agents, planning, navires, conges, user, realisation, incidents})
   const isMobile = useIsMobile();
   const [periode, setPeriode] = useState('semaine'); // semaine | mois
 
-  // ── Recharts via CDN global ──
-  const RC = window.Recharts || {};
-  const {
-    BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
-    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-  } = RC;
-
-  const hasCharts = !!RC.BarChart;
+  // ── Graphiques SVG natifs (sans dépendance externe) ──
+  const hasCharts = true;
 
   const days = getWeekDays(0);
   const weekKeys = days.map(fmtDateKey);
@@ -3757,79 +3783,90 @@ const KPIs = ({agents, planning, navires, conges, user, realisation, incidents})
       // Graphique 1: Réalisation par jour
       React.createElement(Card,{style:{padding:16}},
         React.createElement("h3",{style:{margin:"0 0 12px",fontSize:13,fontWeight:700,color:"#1D2C41"}},"📈 Réalisation par jour (semaine)"),
-        hasCharts && totalPlanifie > 0
-          ? React.createElement(ResponsiveContainer,{width:"100%",height:200},
-              React.createElement(BarChart,{data:realisationParJour,margin:{top:5,right:10,left:-20,bottom:5}},
-                React.createElement(CartesianGrid,{strokeDasharray:"3 3",stroke:"#F1F5F9"}),
-                React.createElement(XAxis,{dataKey:"jour",tick:{fontSize:11}}),
-                React.createElement(YAxis,{tick:{fontSize:11}}),
-                React.createElement(Tooltip,{contentStyle:{fontSize:12}}),
-                React.createElement(Legend,{wrapperStyle:{fontSize:11}}),
-                React.createElement(Bar,{dataKey:"planifie",name:"Planifié",fill:"#CBD5E1",radius:[3,3,0,0]}),
-                React.createElement(Bar,{dataKey:"realise",name:"Réalisé",fill:"#22C55E",radius:[3,3,0,0]}),
-                React.createElement(Bar,{dataKey:"nonRealise",name:"Non réalisé",fill:"#EF4444",radius:[3,3,0,0]})
+        totalPlanifie > 0
+          ? React.createElement('div', {style:{width:"100%",height:200,display:"flex",alignItems:"flex-end",gap:4,padding:"10px 0"}},
+              realisationParJour.map((d,i) => {
+                const maxVal = Math.max(...realisationParJour.map(x=>x.planifie||1));
+                return React.createElement('div', {key:i, style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
+                  React.createElement('div', {style:{width:"100%",display:"flex",gap:1,alignItems:"flex-end",height:160}},
+                    React.createElement('div', {title:"Planifié: "+d.planifie,
+                      style:{flex:1,background:"#CBD5E1",borderRadius:"3px 3px 0 0",height:Math.max(4,(d.planifie/maxVal)*140)+"px"}}),
+                    React.createElement('div', {title:"Réalisé: "+d.realise,
+                      style:{flex:1,background:"#22C55E",borderRadius:"3px 3px 0 0",height:Math.max(4,(d.realise/maxVal)*140)+"px"}}),
+                    React.createElement('div', {title:"Non réalisé: "+d.nonRealise,
+                      style:{flex:1,background:"#EF4444",borderRadius:"3px 3px 0 0",height:Math.max(2,(d.nonRealise/maxVal)*140)+"px"}})
+                  ),
+                  React.createElement('div', {style:{fontSize:9,color:"#64748B",fontWeight:600}}, d.jour)
+                );
+              }),
+              React.createElement('div', {style:{position:"absolute",bottom:0,right:0,display:"flex",gap:8,fontSize:10}},
+                [["#CBD5E1","Planifié"],["#22C55E","Réalisé"],["#EF4444","Non réalisé"]].map(([c,l])=>
+                  React.createElement('span',{key:l,style:{display:"flex",alignItems:"center",gap:3}},
+                    React.createElement('span',{style:{width:8,height:8,borderRadius:2,background:c,display:"inline-block"}}),l))
               )
             )
-          : ChartFallback(hasCharts ? "Aucune donnée de réalisation cette semaine" : "Recharts non chargé")
+          : ChartFallback("Aucune donnée de réalisation cette semaine")
       ),
 
       // Graphique 2: Causes d'absence
       React.createElement(Card,{style:{padding:16}},
         React.createElement("h3",{style:{margin:"0 0 12px",fontSize:13,fontWeight:700,color:"#1D2C41"}},"🔍 Top causes d'absence"),
-        hasCharts && causesData.length > 0
-          ? React.createElement(ResponsiveContainer,{width:"100%",height:200},
-              React.createElement(PieChart,null,
-                React.createElement(Pie,{data:causesData,cx:"50%",cy:"50%",outerRadius:75,dataKey:"value",
-                  label:({name,percent})=>`${name} ${(percent*100).toFixed(0)}%`,labelLine:false},
-                  causesData.map((_,i)=>React.createElement(Cell,{key:i,fill:CAUSES_COLORS[i%CAUSES_COLORS.length]}))
-                ),
-                React.createElement(Tooltip,{contentStyle:{fontSize:12}})
-              )
+        causesData.length > 0
+          ? React.createElement('div', {style:{display:"flex",flexDirection:"column",gap:6,padding:"8px 0"}},
+              causesData.map((d,i) => {
+                const maxVal = causesData[0].value || 1;
+                return React.createElement('div', {key:i, style:{display:"flex",alignItems:"center",gap:8}},
+                  React.createElement('div', {style:{fontSize:11,color:"#64748B",width:100,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, d.name),
+                  React.createElement('div', {style:{flex:1,background:"#F1F5F9",borderRadius:4,height:16,overflow:"hidden"}},
+                    React.createElement('div', {style:{width:Math.round(d.value/maxVal*100)+"%",height:"100%",background:CAUSES_COLORS[i%CAUSES_COLORS.length],borderRadius:4,transition:"width .3s"}})
+                  ),
+                  React.createElement('div', {style:{fontSize:11,fontWeight:700,color:"#1D2C41",width:20,textAlign:"right"}}, d.value)
+                );
+              })
             )
-          : ChartFallback(hasCharts ? "Aucune absence enregistrée" : "Recharts non chargé")
+          : ChartFallback("Aucune absence enregistrée")
       ),
 
       // Graphique 3: Statuts réalisation (donut)
       React.createElement(Card,{style:{padding:16}},
         React.createElement("h3",{style:{margin:"0 0 12px",fontSize:13,fontWeight:700,color:"#1D2C41"}},"⬤ Statuts de réalisation"),
-        hasCharts && totalPlanifie > 0
-          ? React.createElement(ResponsiveContainer,{width:"100%",height:200},
-              React.createElement(PieChart,null,
-                React.createElement(Pie,{
-                  data:[
-                    {name:"Réalisé",value:totalRealise},
-                    {name:"Non réalisé",value:totalNonRealise},
-                    {name:"Partiel",value:totalPartiel},
-                    {name:"Remplacé",value:totalRemplace},
-                  ].filter(d=>d.value>0),
-                  cx:"50%",cy:"50%",innerRadius:45,outerRadius:75,dataKey:"value",
-                  label:({name,value})=>`${value}`},
-                  React.createElement(Cell,{fill:"#22C55E"}),
-                  React.createElement(Cell,{fill:"#EF4444"}),
-                  React.createElement(Cell,{fill:"#F59E0B"}),
-                  React.createElement(Cell,{fill:"#3B82F6"})
-                ),
-                React.createElement(Tooltip,{contentStyle:{fontSize:12}}),
-                React.createElement(Legend,{wrapperStyle:{fontSize:11}})
-              )
+        totalPlanifie > 0
+          ? React.createElement('div', {style:{display:"flex",flexDirection:"column",gap:8,padding:"8px 0"}},
+              [
+                {label:"Réalisé",value:totalRealise,color:"#22C55E"},
+                {label:"Non réalisé",value:totalNonRealise,color:"#EF4444"},
+                {label:"Partiel",value:totalPartiel,color:"#F59E0B"},
+                {label:"Remplacé",value:totalRemplace,color:"#3B82F6"},
+              ].map(d => React.createElement('div', {key:d.label, style:{display:"flex",alignItems:"center",gap:8}},
+                React.createElement('div', {style:{width:80,fontSize:11,color:"#64748B"}}), d.label,
+                React.createElement('div', {style:{flex:1,background:"#F1F5F9",borderRadius:4,height:18,overflow:"hidden"}},
+                  React.createElement('div', {style:{width:totalPlanifie>0?Math.round(d.value/totalPlanifie*100)+"%":"0%",
+                    height:"100%",background:d.color,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:4}},
+                    d.value > 0 && React.createElement('span', {style:{fontSize:10,color:"#fff",fontWeight:700}}, d.value)
+                  )
+                )
+              ))
             )
-          : ChartFallback(hasCharts ? "Aucune donnée de réalisation" : "Recharts non chargé")
+          : ChartFallback("Aucune donnée de réalisation")
       ),
 
       // Graphique 4: Incidents par type
       React.createElement(Card,{style:{padding:16}},
         React.createElement("h3",{style:{margin:"0 0 12px",fontSize:13,fontWeight:700,color:"#1D2C41"}},"🚨 Incidents par type"),
-        hasCharts && incTypesData.length > 0
-          ? React.createElement(ResponsiveContainer,{width:"100%",height:200},
-              React.createElement(BarChart,{data:incTypesData,layout:"vertical",margin:{top:5,right:10,left:10,bottom:5}},
-                React.createElement(CartesianGrid,{strokeDasharray:"3 3",stroke:"#F1F5F9"}),
-                React.createElement(XAxis,{type:"number",tick:{fontSize:11}}),
-                React.createElement(YAxis,{dataKey:"name",type:"category",tick:{fontSize:10},width:80}),
-                React.createElement(Tooltip,{contentStyle:{fontSize:12}}),
-                React.createElement(Bar,{dataKey:"value",name:"Incidents",fill:"#EF4444",radius:[0,3,3,0]})
-              )
+        incTypesData.length > 0
+          ? React.createElement('div', {style:{display:"flex",flexDirection:"column",gap:6,padding:"8px 0"}},
+              incTypesData.map((d,i) => {
+                const maxVal = Math.max(...incTypesData.map(x=>x.value)) || 1;
+                return React.createElement('div', {key:i, style:{display:"flex",alignItems:"center",gap:8}},
+                  React.createElement('div', {style:{fontSize:11,color:"#64748B",width:80,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, d.name),
+                  React.createElement('div', {style:{flex:1,background:"#F1F5F9",borderRadius:4,height:16,overflow:"hidden"}},
+                    React.createElement('div', {style:{width:Math.round(d.value/maxVal*100)+"%",height:"100%",background:"#EF4444",borderRadius:4}})
+                  ),
+                  React.createElement('div', {style:{fontSize:11,fontWeight:700,color:"#1D2C41",width:20,textAlign:"right"}}, d.value)
+                );
+              })
             )
-          : ChartFallback(hasCharts ? "Aucun incident enregistré" : "Recharts non chargé")
+          : ChartFallback("Aucun incident enregistré")
       )
     ),
 
@@ -6102,7 +6139,7 @@ function App() {
   const agentNav = user.role === "agent" ? NAV.filter(n => ["planning", "conges", "fiche", "bulletin"].includes(n.id)) : user.role === "cellule" ? NAV.filter(n => !["agents", "paie", "refus", "pointage", "incidents", "bulletin"].includes(n.id) && !n.directionOnly && !n.agentOnly) : NAV.filter(n => (!n.directionOnly || user.role === "direction") && !n.agentOnly);
 
   const agentInfo = user?.role === "agent" ? agents.find(a => a.id === user.agentId) : null;
-  const pendingConges = conges.filter(c => c.statut === "EN ATTENTE").length;
+  const pendingConges = (conges||[]).filter(c => c.statut === "EN ATTENTE").length;
   return /*#__PURE__*/React.createElement(React.Fragment, null, toast && /*#__PURE__*/React.createElement(Toast, {
     key: toast.k,
     message: toast.msg,
