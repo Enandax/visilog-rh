@@ -3752,7 +3752,7 @@ const KPIs = ({agents, planning, navires, conges, user, realisation, incidents})
 
   // ── Top causes d'absence ──
   const causesCount = {};
-  realKeys.forEach(k => {
+  Object.keys(realisation||{}).forEach(k => {
     const r = realisation[k];
     if (r?.statut==="NON RÉALISÉ" && r.cause) {
       causesCount[r.cause] = (causesCount[r.cause]||0) + 1;
