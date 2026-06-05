@@ -1150,26 +1150,24 @@ const Planning = ({
           shiftInitial: ex.shiftInitial || (ex.shift ? ex.shift : cellData.shift)
         };
       });
-      setPlanning(newPlan);
-      await save(KEYS.planning, newPlan);
-      if (user?.token) {
-        const cells = allDays.map(dk => {
-          const ex = planning[modal.agentId + "_" + dk] || {};
-          return {
-            agentId: modal.agentId,
-            date: dk,
-            shift: cellData.shift || "",
-            role: cellData.role || "",
-            note: cellData.note || "",
-            shiftInitial: ex.shiftInitial || (ex.shift ? ex.shift : cellData.shift) || "",
-            validatedByAgent: ex.validatedByAgent,
-            refusMotif: ex.refusMotif || ""
-          };
-        });
-        if (cells.length === 1) await api("planning.setCell", cells[0], user.token);else await api("planning.bulkSet", {
-          cells
-        }, user.token);
-      }
+      await withLoading("Enregistrement du planning...", async () => {
+        setPlanning(newPlan);
+        await save(KEYS.planning, newPlan);
+        if (user?.token) {
+          const cells = allDays.map(dk => {
+            const ex = planning[modal.agentId + "_" + dk] || {};
+            return {
+              agentId: modal.agentId, date: dk,
+              shift: cellData.shift || "", role: cellData.role || "",
+              note: cellData.note || "",
+              shiftInitial: ex.shiftInitial || (ex.shift ? ex.shift : cellData.shift) || "",
+              validatedByAgent: ex.validatedByAgent, refusMotif: ex.refusMotif || ""
+            };
+          });
+          if (cells.length === 1) await api("planning.setCell", cells[0], user.token);
+          else await api("planning.bulkSet", {cells}, user.token);
+        }
+      });
       showToast(allDays.length > 1 ? `Planning enregistré (${allDays.length} jours)` : "Planning enregistré");
       setModal(null);
     },
@@ -1792,9 +1790,11 @@ const Realisation = ({agents, planning, realisation, setRealisation, user, confi
     const updated = {...(realisation[key]||{}), statut, cause: causeVal||"", updatedAt: new Date().toISOString()};
     const next = {...realisation, [key]: updated};
     setRealisation(next);
-    if (user?.token) {
-      await api("realisation.set", {agentId, date:dk, statut, cause:causeVal||"", heuresReelles: statut==="RÉALISÉ" ? getPlan(agentId,dk).heures : statut==="PARTIEL" ? Math.round(getPlan(agentId,dk).heures/2) : 0}, user.token);
-    }
+    await withLoading("Enregistrement...", async () => {
+      if (user?.token) {
+        await api("realisation.set", {agentId, date:dk, statut, cause:causeVal||"", heuresReelles: statut==="RÉALISÉ" ? getPlan(agentId,dk).heures : statut==="PARTIEL" ? Math.round(getPlan(agentId,dk).heures/2) : 0}, user.token);
+      }
+    });
     showToast(statut==="RÉALISÉ" ? "Shift réalisé ✓" : statut==="NON RÉALISÉ" ? "Non réalisé enregistré" : statut+" enregistré");
   };
 
@@ -2036,14 +2036,14 @@ const Incidents = ({
       statut: "Ouvert",
       declaredBy: user.username
     };
-    const next = [newInc, ...incidents];
-    setIncidents(next);
-    if (user?.token) {
-      const r = await api("incidents.create", f, user.token);
-      if (r.ok) {
-        newInc.id = r.id;
+    await withLoading("Déclaration de l'incident...", async () => {
+      const next = [newInc, ...incidents];
+      setIncidents(next);
+      if (user?.token) {
+        const r = await api("incidents.create", f, user.token);
+        if (r.ok) newInc.id = r.id;
       }
-    }
+    });
     showToast("Incident déclaré");
     setForm(null);
     setF({
@@ -2784,8 +2784,10 @@ const Navires = ({
         ...f
       };
       const next = isNew ? [...navires, navireData] : navires.map(n => n.id === form.id ? navireData : n);
-      saveNavires(next);
-      await apiSaveNavire(navireData, isNew);
+      await withLoading(isNew ? "Création du navire..." : "Mise à jour du navire...", async () => {
+        saveNavires(next);
+        await apiSaveNavire(navireData, isNew);
+      });
       showToast(isNew ? "Navire créé ✓" : "Navire mis à jour ✓");
       setForm(null);
     }
@@ -3199,8 +3201,10 @@ const Agents = ({
         ...f
       };
       const next = isNew ? [...agents, agentData] : agents.map(a => a.id === form.id ? agentData : a);
-      saveAgents(next);
-      await apiSaveAgent(agentData, isNew);
+      await withLoading(isNew ? "Création de l'agent..." : "Mise à jour de l'agent...", async () => {
+        saveAgents(next);
+        await apiSaveAgent(agentData, isNew);
+      });
       showToast(isNew ? "Agent créé ✓" : "Agent mis à jour ✓");
       setForm(null);
     }
@@ -3278,16 +3282,17 @@ const Conges = ({
     }
     setPlanning(newPlanning);
     await save(KEYS.planning, newPlanning);
-    const next = conges.map(c => c.id === id ? {
-      ...c,
-      statut: "VALIDÉ"
-    } : c);
-    await saveConges(next);
-    // Sync API
-    if (user?.token) await api("conges.valider", {
-      id,
-      validePar: user.username
-    }, user.token);
+    await withLoading("Validation du congé...", async () => {
+      const next = conges.map(c => c.id === id ? {
+        ...c,
+        statut: "VALIDÉ"
+      } : c);
+      await saveConges(next);
+      if (user?.token) await api("conges.valider", {
+        id,
+        validePar: user.username
+      }, user.token);
+    });
   };
   const refuser = async id => {
     const next = conges.map(c => c.id === id ? {
@@ -6813,6 +6818,19 @@ function App() {
   const [bulletins, setBulletins] = useState([]);
   const [pointage, setPointage] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [globalLoading, setGlobalLoading] = useState(false);
+  const [globalLoadingMsg, setGlobalLoadingMsg] = useState('');
+
+  const withLoading = async (msg, fn) => {
+    setGlobalLoading(true);
+    setGlobalLoadingMsg(msg || 'Enregistrement en cours...');
+    try {
+      return await fn();
+    } finally {
+      setGlobalLoading(false);
+      setGlobalLoadingMsg('');
+    }
+  };
   const [configShifts, setConfigShifts] = useState(SHIFTS);
   const [configProjets, setConfigProjets] = useState(PROJETS);
   const [configRoles, setConfigRoles] = useState(ROLES_LIST);
@@ -6989,7 +7007,12 @@ function App() {
 
   const agentInfo = user?.role === "agent" ? agents.find(a => a.id === user.agentId) : null;
   const pendingConges = (conges||[]).filter(c => c.statut === "EN ATTENTE").length;
-  return /*#__PURE__*/React.createElement(React.Fragment, null, toast && /*#__PURE__*/React.createElement(Toast, {
+  return /*#__PURE__*/React.createElement(React.Fragment, null,
+    globalLoading && /*#__PURE__*/React.createElement(LoadingOverlay, {
+      message: globalLoadingMsg,
+      subMessage: "Merci de ne pas quitter l'interface"
+    }),
+    toast && /*#__PURE__*/React.createElement(Toast, {
     key: toast.k,
     message: toast.msg,
     type: toast.type,
@@ -7151,7 +7174,8 @@ function App() {
     onBulkSetPlanning: onBulkSetPlanning,
     navireAffectation: navireAffectation,
     onAffecterNavire: nav => setNavireAffectation(nav),
-    isMobile: isMobile
+    isMobile: isMobile,
+    withLoading: withLoading
   }), tab === "navires" && /*#__PURE__*/React.createElement(Navires, {
     navires: navires,
     setNavires: setNavires,
