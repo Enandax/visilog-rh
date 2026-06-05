@@ -1522,8 +1522,13 @@ const RefusPanel = ({
     toast,
     showToast
   } = useToast();
-  const refus = Object.entries(planning).filter(([k, v]) => v.validatedByAgent === false || v.validatedByAgent === "false").map(([key, cell]) => {
-    const [agentId, date] = key.split("_");
+  const refus = Object.entries(planning).filter(([k, v]) => {
+    const val = v.validatedByAgent;
+    return val === false || val === "false" || val === "FALSE" || String(val).toLowerCase() === "false";
+  }).map(([key, cell]) => {
+    // La clé est "agentId_YYYY-MM-DD" — la date est toujours les 10 derniers chars
+    const date = key.slice(-10);
+    const agentId = key.slice(0, key.length - 11);
     const agent = agents.find(a => a.id === agentId) || {};
     const remplacants = agents.filter(a => {
       if (a.id === agentId || !(a.actif === true || a.actif === "TRUE" || a.actif === "true")) return false;
@@ -7258,7 +7263,7 @@ function App() {
       marginLeft: "auto"
     }
   }, pendingConges), n.id === "refus" && (() => {
-    const nb = Object.values(planning).filter(v => v.validatedByAgent === false || v.validatedByAgent === "false").length;
+    const nb = Object.values(planning).filter(v => { const val = v.validatedByAgent; return val === false || val === "false" || val === "FALSE" || String(val).toLowerCase() === "false"; }).length;
     return nb > 0 ? /*#__PURE__*/React.createElement("span", {
       style: {
         background: "#EF4444",
@@ -7465,7 +7470,7 @@ function App() {
       fontWeight: tab === n.id ? 700 : 400,
       letterSpacing: 0.3
     }
-  }, n.label.split(" ")[0]), n.id === "conges" && pendingConges > 0 && user.role === "direction" || n.id === "refus" && Object.values(planning).filter(v => v.validatedByAgent === false || v.validatedByAgent === "false").length > 0 ? /*#__PURE__*/React.createElement("span", {
+  }, n.label.split(" ")[0]), n.id === "conges" && pendingConges > 0 && user.role === "direction" || n.id === "refus" && Object.values(planning).filter(v => { const val = v.validatedByAgent; return val === false || val === "false" || val === "FALSE" || String(val).toLowerCase() === "false"; }).length > 0 ? /*#__PURE__*/React.createElement("span", {
     style: {
       position: "absolute",
       top: 4,
