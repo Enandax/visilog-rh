@@ -619,6 +619,22 @@ const Login = ({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rememberMe, setRememberMe] = React.useState(() => {
+    try { return localStorage.getItem('visilog_remember') === '1'; } catch(e) { return false; }
+  });
+
+  // Pré-remplir si "se souvenir" était coché
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem('visilog_remember') === '1') {
+        const savedUser = localStorage.getItem('visilog_saved_user');
+        const savedPass = localStorage.getItem('visilog_saved_pass');
+        if (savedUser) setUsername(savedUser);
+        if (savedPass) setPassword(savedPass);
+      }
+    } catch(e) {}
+  }, []);
+
   const handleSubmit = async () => {
     if (!username || !password) {
       setError("Remplir les deux champs");
@@ -635,10 +651,19 @@ const Login = ({
       setError(r.error || "Identifiants incorrects");
       return;
     }
-    onLogin({
-      username,
-      password
-    });
+    // Sauvegarder si "se souvenir" coché
+    try {
+      if (rememberMe) {
+        localStorage.setItem('visilog_remember', '1');
+        localStorage.setItem('visilog_saved_user', username.toLowerCase().trim());
+        localStorage.setItem('visilog_saved_pass', password);
+      } else {
+        localStorage.removeItem('visilog_remember');
+        localStorage.removeItem('visilog_saved_user');
+        localStorage.removeItem('visilog_saved_pass');
+      }
+    } catch(e) {}
+    onLogin({ username, password });
   };
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -719,7 +744,17 @@ const Login = ({
       fontSize: 13,
       color: "#1E293B"
     }
-  })), error && /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("label", {
+    style: {display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,color:"#64748B"}
+  },
+    /*#__PURE__*/React.createElement("input", {
+      type: "checkbox", checked: rememberMe,
+      onChange: e => setRememberMe(e.target.checked),
+      style: {width:16,height:16,cursor:"pointer"}
+    }),
+    "Se souvenir de moi"
+  ),
+  error && /*#__PURE__*/React.createElement("div", {
     style: {
       color: "#EF4444",
       fontSize: 12,
@@ -6046,8 +6081,10 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
 
 const calcPolyvalence = (agent, localPostes, localProjetsDetail) => {
   // Postes maîtrisés = roles de l'agent croisés avec localPostes
-  // Comparer sur nom ET valeur (les postes BDD peuvent avoir des noms légèrement différents)
-  const postesAgent = (agent.roles || [])
+  // Comparer sur nom ET valeur, insensible à la casse et aux espaces
+  const rolesAgent = (agent.roles || []).filter(r => r && r.trim());
+
+  let postesAgent = rolesAgent
     .map(roleName => {
       const rn = (roleName||'').trim().toLowerCase();
       return localPostes.find(p =>
@@ -6057,6 +6094,31 @@ const calcPolyvalence = (agent, localPostes, localProjetsDetail) => {
       );
     })
     .filter(Boolean);
+
+  // Fallback: si localPostes vide ou aucune correspondance,
+  // créer des postes virtuels depuis les roles avec difficulté par défaut
+  if (postesAgent.length === 0 && rolesAgent.length > 0) {
+    const DIFF_MAP = {
+      '50kg':5,'chargement':5,'foodipex':4,'pfc':3,'raffinerie':3,
+      'quai':3,'kiosque':3,'pfm':2,'douane':2,'costoma':1,
+      'superviseur':3,'planificateur':2,'arrivée':2,'maamoura':2
+    };
+    // Trouver le projetId de l'agent depuis localProjetsDetail
+    const projetAgent = localProjetsDetail.find(p =>
+      (p.nom||'').toLowerCase() === (agent.projet||'').toLowerCase()
+    );
+    postesAgent = rolesAgent.map(r => {
+      const rLow = r.toLowerCase();
+      const diff = Object.entries(DIFF_MAP).find(([k]) => rLow.includes(k))?.[1] || 1;
+      return {
+        nom: r, valeur: r,
+        projetId: projetAgent?.id || '',
+        difficulte: diff,
+        mode: 'JOURNALIER',
+        actif: true,
+      };
+    });
+  }
 
   if (postesAgent.length === 0) return { score: 0, niveau: 'E', postesDetail: [], projetsDistincts: 0, coefProjet: 1 };
 
