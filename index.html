@@ -4773,7 +4773,7 @@ const GestionPointage = ({agents, pointage, setPointage, user, withLoading, setG
     const toPub = pointage.filter(p => p.mois === moisFilter && p.publie !== "TRUE" && p.publie !== true);
     if (!toPub.length) { showToast("Tout est déjà publié","error"); return; }
     setPublishing(true);
-    setGlobalLoading(true); setGlobalLoadingMsg("Publication du pointage...");
+    if (typeof setGlobalLoading === "function") { setGlobalLoading(true); setGlobalLoadingMsg("Publication du pointage..."); }
     setLoadingMsgGP('Publication en cours...');
     const r = await api("pointage.publier", {mois: moisFilter}, user.token);
     setPublishing(false);
