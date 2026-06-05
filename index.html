@@ -4769,6 +4769,7 @@ const GestionPointage = ({agents, pointage, setPointage, user}) => {
     const toPub = pointage.filter(p => p.mois === moisFilter && p.publie !== "TRUE" && p.publie !== true);
     if (!toPub.length) { showToast("Tout est déjà publié","error"); return; }
     setPublishing(true);
+    setGlobalLoading(true); setGlobalLoadingMsg("Publication du pointage...");
     setLoadingMsgGP('Publication en cours...');
     const r = await api("pointage.publier", {mois: moisFilter}, user.token);
     setPublishing(false);
@@ -6870,66 +6871,80 @@ function App() {
   const handleLogin = useCallback(async credentials => {
     // Si login par API (username/password)
     if (credentials.username) {
-      const r = await api("login", credentials);
-      if (!r.ok) {
-        alert(r.error || "Identifiants incorrects");
-        return;
-      }
-      const u = {
-        ...r.user,
-        token: r.token
-      };
-      setUser(u);
-      await save(KEYS.user, u);
-      if (u.role === "agent") setTab("planning");
-      // Charger les données depuis l'API
-      const [ag, pl, nav, cong, cfg, real, inc, bul, ptg] = await Promise.all([api("agents.list", {}, r.token), api("planning.get", {}, r.token), api("navires.list", {}, r.token), api("conges.list", {}, r.token), api("config.get", {}, r.token), api("realisation.get", {}, r.token), r.user.role !== "agent" ? api("incidents.list", {}, r.token) : Promise.resolve({
-        ok: false
-      }),
-      api("bulletins.list", {}, r.token),
-        api("pointage.get", {}, r.token)]);
-      if (ag.ok) {
-        setAgents(ag.data);
-        await save(KEYS.agents, ag.data);
-      }
-      if (pl.ok) {
-        setPlanning(pl.data);
-        await save(KEYS.planning, pl.data);
-      }
-      if (nav.ok) {
-        setNavires(nav.data);
-        await save(KEYS.navires, nav.data);
-      }
-      if (real?.ok) setRealisation(real.data || {});
-      if (inc?.ok) setIncidents(inc.data || []);
-      if (bul?.ok) setBulletins(bul.data || []);
-      if (ptg?.ok) setPointage(ptg.data || []);
-      if (cong.ok) {
-        setConges(cong.data);
-        await save(KEYS.conges, cong.data);
-      }
-      // Charger config dynamique depuis BDD
-      if (cfg.ok && cfg.data) {
-        const d = cfg.data;
 
-        // ── Shifts ──
-        const shifts = d.shifts?.filter(s => s.actif).map(s => s.valeur) || SHIFTS;
-        const colors = {};
-        d.shifts?.forEach(s => { colors[s.valeur] = s.couleur || "#334155"; });
-        setConfigShifts(shifts);
-        if (Object.keys(colors).length) setConfigColors({...SHIFT_COLORS, ...colors});
+      // ── Overlay de chargement avec messages évolutifs ──
+      setGlobalLoading(true);
+      setGlobalLoadingMsg("Connexion en cours...");
+      const loadingMessages = [
+        "Chargement des agents...",
+        "Chargement du planning...",
+        "Synchronisation des données...",
+        "Préparation de l'interface...",
+      ];
+      let msgIdx = 0;
+      const msgTimer = setInterval(() => {
+        msgIdx = Math.min(msgIdx + 1, loadingMessages.length - 1);
+        setGlobalLoadingMsg(loadingMessages[msgIdx]);
+      }, 2000);
 
-        // ── Projets ──
-        const projets = d.projets?.filter(p => p.actif).map(p => p.valeur) || PROJETS;
-        setConfigProjets(projets);
+      try {
+        const r = await api("login", credentials);
+        if (!r.ok) {
+          clearInterval(msgTimer);
+          setGlobalLoading(false);
+          alert(r.error || "Identifiants incorrects");
+          return;
+        }
+        const u = { ...r.user, token: r.token };
+        setUser(u);
+        await save(KEYS.user, u);
+        if (u.role === "agent") setTab("planning");
 
-        // ── Rôles ──
-        const roles = d.roles?.filter(r => r.actif).map(r => r.valeur) || ROLES_LIST;
-        setConfigRoles(roles);
+        // Charger les données depuis l'API
+        const [ag, pl, nav, cong, cfg, real, inc, bul, ptg] = await Promise.all([
+          api("agents.list",    {}, r.token),
+          api("planning.get",   {}, r.token),
+          api("navires.list",   {}, r.token),
+          api("conges.list",    {}, r.token),
+          api("config.get",     {}, r.token),
+          api("realisation.get",{}, r.token),
+          r.user.role !== "agent" ? api("incidents.list", {}, r.token) : Promise.resolve({ok: false}),
+          api("bulletins.list", {}, r.token),
+          api("pointage.get",   {}, r.token)
+        ]);
 
-        // ── Exposer la config brute pour le module Configuration ──
-        window.__visilogConfig = d;
+        if (ag.ok)  { setAgents(ag.data);   await save(KEYS.agents, ag.data); }
+        if (pl.ok)  { setPlanning(pl.data);  await save(KEYS.planning, pl.data); }
+        if (nav.ok) { setNavires(nav.data);  await save(KEYS.navires, nav.data); }
+        if (real?.ok) setRealisation(real.data || {});
+        if (inc?.ok)  setIncidents(inc.data || []);
+        if (bul?.ok)  setBulletins(bul.data || []);
+        if (ptg?.ok)  setPointage(ptg.data || []);
+        if (cong.ok) { setConges(cong.data); await save(KEYS.conges, cong.data); }
+
+        // Charger config dynamique depuis BDD
+        if (cfg.ok && cfg.data) {
+          const d = cfg.data;
+          const shifts = d.shifts?.filter(s => s.actif).map(s => s.valeur) || SHIFTS;
+          const colors = {};
+          d.shifts?.forEach(s => { colors[s.valeur] = s.couleur || "#334155"; });
+          setConfigShifts(shifts);
+          if (Object.keys(colors).length) setConfigColors({...SHIFT_COLORS, ...colors});
+          const projets = d.projets?.filter(p => p.actif).map(p => p.valeur) || PROJETS;
+          setConfigProjets(projets);
+          const roles = d.roles?.filter(r => r.actif).map(r => r.valeur) || ROLES_LIST;
+          setConfigRoles(roles);
+          window.__visilogConfig = d;
+        }
+
+      } catch(err) {
+        alert("Erreur de connexion. Veuillez réessayer.");
+      } finally {
+        clearInterval(msgTimer);
+        setGlobalLoading(false);
+        setGlobalLoadingMsg('');
       }
+
     } else {
       // Compatibilité ancien mode local
       setUser(credentials);
