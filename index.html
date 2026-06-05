@@ -2009,7 +2009,8 @@ const Incidents = ({
   agents,
   incidents,
   setIncidents,
-  user
+  user,
+  withLoading
 }) => {
   const {
     toast,
@@ -2036,14 +2037,19 @@ const Incidents = ({
       statut: "Ouvert",
       declaredBy: user.username
     };
-    await withLoading("Déclaration de l'incident...", async () => {
+    const doCreate = async () => {
       const next = [newInc, ...incidents];
       setIncidents(next);
       if (user?.token) {
         const r = await api("incidents.create", f, user.token);
         if (r.ok) newInc.id = r.id;
       }
-    });
+    };
+    if (typeof withLoading === "function") {
+      await withLoading("Incident en cours...", doCreate);
+    } else {
+      await doCreate();
+    }
     showToast("Incident déclaré");
     setForm(null);
     setF({
@@ -5126,7 +5132,7 @@ const MaFichePointage = ({pointage, user}) => {
 };
 
 // ─── MODULE : CONFIGURATION (Phase 1A) ──────────────────────
-const Configuration = ({user, configShifts, setConfigShifts, configProjets, setConfigProjets, configRoles, setConfigRoles, configColors, setConfigColors}) => {
+const Configuration = ({user, configShifts, setConfigShifts, configProjets, setConfigProjets, configRoles, setConfigRoles, configColors, setConfigColors, withLoading}) => {
   const {toast, showToast} = useToast();
   const [activeTab, setActiveTab] = useState('parametres');
   const [saving, setSaving] = useState(false);
@@ -5349,7 +5355,19 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
   ];
 
   const saveAll = async () => {
-    setSaving(true);
+    if (withLoading) {
+      await withLoading("Sauvegarde de la configuration...", async () => {
+        await _doSaveAll();
+      });
+    } else {
+      setSaving(true);
+      await _doSaveAll();
+      setSaving(false);
+      showToast('Configuration sauvegardée ✓');
+    }
+  };
+
+  const _doSaveAll = async () => {
     // Mettre à jour les states globaux React
     const activeShifts = localShifts.filter(s=>s.actif).map(s=>s.valeur);
     const activeProjets = localProjets.filter(p=>p.actif).map(p=>p.valeur);
@@ -5489,8 +5507,12 @@ const Configuration = ({user, configShifts, setConfigShifts, configProjets, setC
         await api('config.save', cat, user.token);
       }
     }
-    setSaving(false);
-    showToast('Configuration sauvegardée ✓');
+    if (!withLoading) {
+      setSaving(false);
+      showToast('Configuration sauvegardée ✓');
+    } else {
+      showToast('Configuration sauvegardée ✓');
+    }
   };
 
   const tabStyle = (id) => ({
@@ -7218,7 +7240,8 @@ function App() {
     agents: agents,
     incidents: incidents,
     setIncidents: setIncidents,
-    user: user
+    user: user,
+    withLoading: withLoading
   }),
   tab === "fiche" && user.role === "agent" && React.createElement(MaFichePointage, {
     pointage: pointage,
@@ -7251,6 +7274,7 @@ function App() {
     setConfigRoles: setConfigRoles,
     configColors: configColors,
     setConfigColors: setConfigColors,
+    withLoading: withLoading,
   }),
   tab === "annonces" && React.createElement(Annonces, {
     user: user,
