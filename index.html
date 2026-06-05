@@ -808,7 +808,8 @@ const Planning = ({
   navires,
   user,
   configShifts,
-  configColors
+  configColors,
+  withLoading
 }, isMobile = false) => {
   const {
     toast,
@@ -1759,7 +1760,7 @@ const STATUT_REAL_COLORS = {
   "REMPLACÉ":    {bg:"#EFF6FF", color:"#1D4ED8", badge:"#3B82F6"},
 };
 
-const Realisation = ({agents, planning, realisation, setRealisation, user, configShifts}) => {
+const Realisation = ({agents, planning, realisation, setRealisation, user, configShifts, withLoading}) => {
   const {toast, showToast} = useToast();
   const isMob = useIsMobile();
   const [weekOffset, setWeekOffset] = useState(0);
@@ -2433,7 +2434,8 @@ const Navires = ({
   planning,
   setPlanning,
   user,
-  configRoles
+  configRoles,
+  withLoading
 }) => {
   const {
     toast,
@@ -2806,7 +2808,8 @@ const Agents = ({
   setAgents,
   user,
   configProjets,
-  configRoles
+  configRoles,
+  withLoading
 }) => {
   const {
     toast,
@@ -3225,7 +3228,8 @@ const Conges = ({
   planning,
   setPlanning,
   user,
-  configShifts
+  configShifts,
+  withLoading
 }) => {
   const {
     toast,
@@ -4699,7 +4703,7 @@ const ImportPointage = ({agents, user, onImported}) => {
 
 
 // ─── MODULE : GESTION POINTAGE (Direction) ───────────────────
-const GestionPointage = ({agents, pointage, setPointage, user}) => {
+const GestionPointage = ({agents, pointage, setPointage, user, withLoading, setGlobalLoading, setGlobalLoadingMsg}) => {
   const {toast, showToast} = useToast();
   const [tab, setTab] = useState('import');
   const availableMois = [...new Set((pointage||[]).map(p=>p.mois).filter(Boolean))].sort().reverse();
@@ -4937,7 +4941,7 @@ const GestionPointage = ({agents, pointage, setPointage, user}) => {
 };
 
 // ─── MODULE : MA FICHE DE PRÉSENCE (Agent) ───────────────────
-const MaFichePointage = ({pointage, user}) => {
+const MaFichePointage = ({pointage, user, setGlobalLoading, setGlobalLoadingMsg}) => {
   const {toast, showToast} = useToast();
   const availableMoisAgent = [...new Set((pointage||[]).filter(p => p.agentId === (user.agentId||'')).map(p=>p.mois).filter(Boolean))].sort().reverse();
   const defaultMoisAgent = availableMoisAgent.length > 0 ? availableMoisAgent[0] : (() => {
@@ -7222,13 +7226,15 @@ function App() {
     user: user,
     configRoles: configRoles,
     onAffecterNavire: nav => setNavireAffectation(nav),
-    navireAffectation: navireAffectation
+    navireAffectation: navireAffectation,
+    withLoading: withLoading
   }), tab === "agents" && user.role === "direction" && /*#__PURE__*/React.createElement(Agents, {
     agents: agents,
     setAgents: setAgents,
     user: user,
     configProjets: configProjets,
-    configRoles: configRoles
+    configRoles: configRoles,
+    withLoading: withLoading
   }), tab === "conges" && /*#__PURE__*/React.createElement(Conges, {
     agents: agents,
     conges: conges,
@@ -7236,7 +7242,8 @@ function App() {
     planning: planning,
     setPlanning: setPlanning,
     user: user,
-    configShifts: configShifts
+    configShifts: configShifts,
+    withLoading: withLoading
   }), tab === "paie" && user.role === "direction" && /*#__PURE__*/React.createElement(Paie, {
     agents: agents,
     planning: planning,
@@ -7250,7 +7257,8 @@ function App() {
     planning: planning,
     realisation: realisation,
     setRealisation: setRealisation,
-    user: user
+    user: user,
+    withLoading: withLoading
   }), tab === "incidents" && user.role === "direction" && React.createElement(Incidents, {
     agents: agents,
     incidents: incidents,
@@ -7260,7 +7268,9 @@ function App() {
   }),
   tab === "fiche" && user.role === "agent" && React.createElement(MaFichePointage, {
     pointage: pointage,
-    user: user
+    user: user,
+    setGlobalLoading: setGlobalLoading,
+    setGlobalLoadingMsg: setGlobalLoadingMsg
   }),
   tab === "bulletin" && user.role === "agent" && React.createElement(MonBulletin, {
     bulletins: bulletins,
