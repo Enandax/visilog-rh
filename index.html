@@ -2949,44 +2949,47 @@ const Agents = ({
         display: "block",
         marginBottom: 8
       }
-    }, "R\xF4les / Postes habilit\xE9s"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 6
-      }
-    }, (() => {
-      // Postes depuis la config — filtrés par projet si sélectionné
-      const rawPostes = window.__visilogConfig?.postes;
-      let postesList = [];
-      if (rawPostes && rawPostes.length > 0) {
-        postesList = rawPostes
-          .filter(p => p.actif !== false && p.actif !== 'FALSE')
-          .filter(p => !f.projet || !p.extra1 || (() => {
-            // Trouver le projetId correspondant au nom du projet
-            const projetsDetail = window.__visilogConfig?.projetsDetail || [];
-            const projetMatch = projetsDetail.find(pr => pr.valeur === f.projet);
-            return !projetMatch || p.extra1 === projetMatch.id;
-          })())
-          .map(p => p.valeur || p.nom);
-      }
-      if (postesList.length === 0) postesList = configRoles && configRoles.length > 0 ? configRoles : ROLES_LIST;
-      return postesList.map(r => /*#__PURE__*/React.createElement("div", {
-        key: r,
-        onClick: () => toggleRole(r),
-        style: {
-          padding: "5px 10px",
-          borderRadius: 6,
-          fontSize: 12,
-          cursor: "pointer",
-          fontWeight: 600,
-          background: f.roles.includes(r) ? "#D5A563" : "#F1F5F9",
-          color: f.roles.includes(r) ? "#fff" : "#64748B",
-          border: `1px solid ${f.roles.includes(r) ? "#D5A563" : "#CBD5E1"}`,
-          transition: "all .15s"
-        }
-      }, r));
-    })())), /*#__PURE__*/React.createElement("label", {
+    }, "R\xF4les / Postes habilit\xE9s"),
+    /*#__PURE__*/React.createElement("div", {style:{display:"flex",gap:8,alignItems:"center",marginBottom:6}},
+      /*#__PURE__*/React.createElement("select", {
+        value: "",
+        onChange: e => { if (e.target.value) toggleRole(e.target.value); e.target.value=""; },
+        style: {padding:"8px 10px",borderRadius:6,border:"1px solid #CBD5E1",fontSize:13,flex:1,background:"#fff"}
+      },
+        /*#__PURE__*/React.createElement("option", {value:""}, "— Ajouter un poste —"),
+        (() => {
+          const rawPostes = window.__visilogConfig?.postes;
+          let postesList = [];
+          if (rawPostes && rawPostes.length > 0) {
+            postesList = rawPostes
+              .filter(p => p.actif !== false && p.actif !== 'FALSE')
+              .map(p => p.valeur || p.nom);
+          }
+          if (postesList.length === 0) postesList = configRoles && configRoles.length > 0 ? configRoles : ROLES_LIST;
+          return postesList
+            .filter(r => !f.roles.includes(r))
+            .map(r => /*#__PURE__*/React.createElement("option", {key:r, value:r}, r));
+        })()
+      )
+    ),
+    /*#__PURE__*/React.createElement("div", {style:{display:"flex",flexWrap:"wrap",gap:6,minHeight:32}},
+      f.roles.length === 0
+        ? /*#__PURE__*/React.createElement("span", {style:{fontSize:12,color:"#94A3B8",fontStyle:"italic"}}, "Aucun poste sélectionné")
+        : f.roles.map(r => /*#__PURE__*/React.createElement("div", {
+            key: r,
+            style: {
+              display:"flex",alignItems:"center",gap:6,
+              background:"#FAF6EE",border:"1px solid #D5A563",
+              borderRadius:20,padding:"4px 8px 4px 12px",fontSize:12,fontWeight:600,color:"#D5A563"
+            }
+          },
+            r,
+            /*#__PURE__*/React.createElement("button", {
+              onClick: () => toggleRole(r),
+              style: {background:"none",border:"none",color:"#D5A563",cursor:"pointer",fontSize:15,lineHeight:1,padding:0}
+            }, "×")
+          ))
+    )), /*#__PURE__*/React.createElement("label", {
       style: {
         display: "flex",
         alignItems: "center",
