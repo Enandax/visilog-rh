@@ -1524,7 +1524,7 @@ const RefusPanel = ({
   } = useToast();
   const refus = Object.entries(planning).filter(([k, v]) => {
     const val = v.validatedByAgent;
-    return val === false || val === "false" || val === "FALSE" || String(val).toLowerCase() === "false";
+    return val === false || val === "false" || val === "FALSE" || val === "FAUX" || val === "faux" || String(val).toLowerCase() === "false" || String(val).toLowerCase() === "faux";
   }).map(([key, cell]) => {
     // La clé est "agentId_YYYY-MM-DD" — la date est toujours les 10 derniers chars
     const date = key.slice(-10);
@@ -2709,41 +2709,13 @@ const Navires = ({
     "TERMINÉ": "#22C55E",
     "ANNULÉ": "#EF4444"
   };
-  // ── Overlay rotation ──
-  const showRotateHint = isMobile && isPortrait && !dismissedRotate;
-
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexDirection: "column",
       gap: 16
     }
-  },
-    showRotateHint && React.createElement('div', {
-      style: {
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(29,44,65,0.93)', zIndex: 9999,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 20, padding: 32,
-      }
-    },
-      React.createElement('div', {style:{fontSize:64}}, String.fromCodePoint(0x1F4F1)),
-      React.createElement('div', {
-        style:{fontSize:18,fontWeight:700,color:'#fff',textAlign:'center'}
-      }, 'Tournez votre téléphone'),
-      React.createElement('div', {
-        style:{fontSize:13,color:'#94A3B8',textAlign:'center',lineHeight:1.6}
-      }, "Le planning s'affiche mieux en mode paysage"),
-      React.createElement('button', {
-        onClick: () => setDismissedRotate(true),
-        style:{
-          marginTop:8, padding:'10px 24px',
-          background:'transparent', border:'1px solid #475569',
-          borderRadius:8, color:'#94A3B8', fontSize:13, cursor:'pointer'
-        }
-      }, 'Continuer quand même →')
-    ),
-    toast && /*#__PURE__*/React.createElement(Toast, {
+  }, toast && /*#__PURE__*/React.createElement(Toast, {
     message: toast.message,
     type: toast.type
   }), /*#__PURE__*/React.createElement("div", {
@@ -7263,7 +7235,7 @@ function App() {
       marginLeft: "auto"
     }
   }, pendingConges), n.id === "refus" && (() => {
-    const nb = Object.values(planning).filter(v => { const val = v.validatedByAgent; return val === false || val === "false" || val === "FALSE" || String(val).toLowerCase() === "false"; }).length;
+    const nb = Object.values(planning).filter(v => { const val = v.validatedByAgent; return val === false || val === "false" || val === "FALSE" || val === "FAUX" || val === "faux" || String(val).toLowerCase() === "false" || String(val).toLowerCase() === "faux"; }).length;
     return nb > 0 ? /*#__PURE__*/React.createElement("span", {
       style: {
         background: "#EF4444",
@@ -7470,7 +7442,7 @@ function App() {
       fontWeight: tab === n.id ? 700 : 400,
       letterSpacing: 0.3
     }
-  }, n.label.split(" ")[0]), n.id === "conges" && pendingConges > 0 && user.role === "direction" || n.id === "refus" && Object.values(planning).filter(v => { const val = v.validatedByAgent; return val === false || val === "false" || val === "FALSE" || String(val).toLowerCase() === "false"; }).length > 0 ? /*#__PURE__*/React.createElement("span", {
+  }, n.label.split(" ")[0]), n.id === "conges" && pendingConges > 0 && user.role === "direction" || n.id === "refus" && Object.values(planning).filter(v => { const val = v.validatedByAgent; return val === false || val === "false" || val === "FALSE" || val === "FAUX" || val === "faux" || String(val).toLowerCase() === "false" || String(val).toLowerCase() === "faux"; }).length > 0 ? /*#__PURE__*/React.createElement("span", {
     style: {
       position: "absolute",
       top: 4,
