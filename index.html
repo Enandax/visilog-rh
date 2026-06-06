@@ -7118,7 +7118,7 @@ function App() {
   if (!user) return /*#__PURE__*/React.createElement(Login, {
     onLogin: handleLogin
   });
-  const agentNav = user.role === "agent" ? NAV.filter(n => ["planning", "conges", "fiche", "bulletin", "polyvalence", "annonces"].includes(n.id)) : user.role === "cellule" ? NAV.filter(n => !["agents", "paie", "refus", "pointage", "incidents", "bulletin"].includes(n.id) && !n.directionOnly && !n.agentOnly) : NAV.filter(n => (!n.directionOnly || user.role === "direction") && !n.agentOnly);
+  const agentNav = user.role === "agent" ? NAV.filter(n => ["planning", "conges", "fiche", "bulletin", "polyvalence", "annonces"].includes(n.id)) : user.role === "cellule" ? NAV.filter(n => !["agents", "paie", "refus", "pointage", "incidents", "bulletin", "polyvalence"].includes(n.id) && !n.directionOnly && !n.agentOnly) : NAV.filter(n => (!n.directionOnly || user.role === "direction") && !n.agentOnly);
 
   const agentInfo = user?.role === "agent" ? agents.find(a => a.id === user.agentId) : null;
   const pendingConges = (conges||[]).filter(c => c.statut === "EN ATTENTE").length;
@@ -7361,7 +7361,10 @@ function App() {
     agents: agents,
     pointage: pointage,
     setPointage: setPointage,
-    user: user
+    user: user,
+    withLoading: withLoading,
+    setGlobalLoading: setGlobalLoading,
+    setGlobalLoadingMsg: setGlobalLoadingMsg
   }),
   tab === "configuration" && user.role === "direction" && React.createElement(Configuration, {
     user: user,
